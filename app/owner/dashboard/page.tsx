@@ -1,0 +1,1168 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { motion } from 'framer-motion';
+import {
+  Building2,
+  Calendar,
+  IndianRupee,
+  Star,
+  Check,
+  X,
+  ChevronRight,
+  Plus,
+  Eye,
+  BarChart3,
+  Bell,
+  Clock,
+  User,
+  MapPin,
+  Phone,
+  Mail,
+  FileText,
+  AlertCircle,
+  Loader2,
+  LogOut,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  Pencil,
+} from 'lucide-react';
+import Link from 'next/link';
+import { Button, Card, Badge, Modal } from '@/components/ui';
+import { formatCurrency, cn } from '@/lib/utils';
+
+const tabs = [
+  { id: 'overview', label: 'Overview', icon: BarChart3 },
+  { id: 'bookings', label: 'Booking Requests', icon: Calendar },
+  { id: 'venues', label: 'My Venues', icon: Building2 },
+];
+
+export default function OwnerDashboardPage() {
+  const router = useRouter();
+  const { user, role, isLoading: authLoading, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [venues, setVenues] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [venueRequests, setVenueRequests] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [selectedVenue, setSelectedVenue] = useState<any>(null);
+  const [savingVenue, setSavingVenue] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [venueForm, setVenueForm] = useState<any>({
+    availability: 'available',
+    inventoryVisibility: 'public',
+    pricingHourly: '',
+    minBookingHours: '',
+    availableTimings: '',
+    capacityMin: '',
+    capacityMax: '',
+    bookingSlots: '',
+    blockedDates: [] as string[],
+    description: '',
+    amenities: [] as string[],
+    images: [] as string[],
+  });
+
+  // Redirect if not authenticated or not an owner
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.push('/login?redirect=/owner/dashboard');
+        return;
+      }
+      // Only redirect if role is explicitly set to non-owner
+      // Don't redirect if role is still null (still loading)
+      if (role !== null && role !== 'owner') {
+        console.log('User role is not owner, redirecting. Role:', role);
+        router.push('/');
+        return;
+      }
+    }
+  }, [user, role, authLoading, router]);
+
+  useEffect(() => {
+    if (user && role === 'owner') {
+      fetchData();
+    }
+  }, [user, role]);
+
+  const fetchData = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const [venuesRes, bookingsRes, requestsRes] = await Promise.all([
+        fetch(`/api/owner/venues?ownerId=${user.id}`),
+        fetch(`/api/owner/bookings?ownerId=${user.id}`),
+        fetch(`/api/venue-requests?ownerId=${user.id}`),
+      ]);
+
+      const venuesData = await venuesRes.json();
+      const bookingsData = await bookingsRes.json();
+      const requestsData = await requestsRes.json();
+
+      console.log('Venues API response:', { venuesData, userId: user.id });
+
+      if (venuesData.success) {
+        setVenues(venuesData.data || []);
+      } else {
+        console.error('Venues API error:', venuesData.error);
+      }
+
+      if (bookingsData.success) {
+        setBookings(bookingsData.data || []);
+      }
+
+      if (requestsData.success) {
+        setVenueRequests(requestsData.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
+  };
+
+  const openInventoryModal = (venue: any) => {
+    console.log('Opening inventory modal for venue:', venue);
+    setSelectedVenue(venue);
+    setVenueForm({
+      availability: venue.availability || 'available',
+      inventoryVisibility: venue.inventory_visibility || 'public',
+      pricingHourly: String(venue.pricing?.hourly ?? ''),
+      minBookingHours: String(venue.minBookingHours ?? ''),
+      availableTimings: String(venue.availableTimings ?? ''),
+      capacityMin: String(venue.capacity?.min ?? ''),
+      capacityMax: String(venue.capacity?.max ?? ''),
+      bookingSlots: String(venue.booking_slots ?? ''),
+      blockedDates: Array.isArray(venue.blocked_dates) ? venue.blocked_dates : [],
+      description: String(venue.description ?? ''),
+      amenities: Array.isArray(venue.amenities) ? venue.amenities : [],
+      images: Array.isArray(venue.images) ? venue.images : [],
+    });
+    setShowInventoryModal(true);
+  };
+
+  const saveInventoryUpdates = async () => {
+    if (!user || !selectedVenue) return;
+
+    const capacityMin = Number(venueForm.capacityMin);
+    const capacityMax = Number(venueForm.capacityMax);
+
+    if (!Number.isFinite(capacityMin) || !Number.isFinite(capacityMax) || capacityMin <= 0 || capacityMax <= 0) {
+      alert('Please enter a valid capacity range.');
+      return;
+    }
+
+    if (capacityMin > capacityMax) {
+      alert('Capacity min cannot be greater than capacity max.');
+      return;
+    }
+
+    setSavingVenue(true);
+    try {
+      const response = await fetch(`/api/owner/venues/${selectedVenue.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ownerId: user.id,
+          availability: venueForm.availability,
+            inventory_visibility: venueForm.inventoryVisibility,
+          pricing_hourly: Number(venueForm.pricingHourly || 0),
+          min_booking_hours: Number(venueForm.minBookingHours || 1),
+          available_timings: venueForm.availableTimings,
+          capacity_min: capacityMin,
+          capacity_max: capacityMax,
+            booking_slots: venueForm.bookingSlots,
+            blocked_dates: Array.isArray(venueForm.blockedDates) ? venueForm.blockedDates : String(venueForm.blockedDates || '').split(',').map((v:string)=>v.trim()).filter(Boolean),
+            description: venueForm.description,
+            amenities: Array.isArray(venueForm.amenities) ? venueForm.amenities : String(venueForm.amenities || '').split(',').map((v:string)=>v.trim()).filter(Boolean),
+            images: Array.isArray(venueForm.images) ? venueForm.images : String(venueForm.images || '').split(',').map((v:string)=>v.trim()).filter(Boolean),
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to save inventory updates.');
+      }
+
+      await fetchData();
+      setShowInventoryModal(false);
+      setSelectedVenue(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update venue inventory.';
+      alert(message);
+    } finally {
+      setSavingVenue(false);
+    }
+  };
+
+  // Image upload helper: uploads files to /api/storage/upload and appends returned publicUrl
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files) return;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const res = await fetch('/api/storage/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bucket: 'venue-images', fileName: `owner-${selectedVenue?.id || 'guest'}-${Date.now()}-${i}.${file.name.split('.').pop()}`, file: base64 }),
+        });
+
+        const json = await res.json();
+        if (res.ok && json?.data?.publicUrl) {
+          setVenueForm((prev: any) => ({ ...prev, images: [...(prev.images || []), json.data.publicUrl] }));
+        } else {
+          console.warn('Upload failed', json);
+          alert('Image upload failed');
+        }
+      } catch (err) {
+        console.error('Image upload error', err);
+        alert('Image upload failed');
+      }
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setVenueForm((prev: any) => ({ ...prev, images: prev.images.filter((_:any, i:number) => i !== index) }));
+  };
+
+  const handleAddAmenity = (value: string) => {
+    const v = value.trim();
+    if (!v) return;
+    setVenueForm((prev: any) => ({ ...prev, amenities: Array.from(new Set([...(prev.amenities || []), v])) }));
+  };
+
+  const handleRemoveAmenity = (index: number) => {
+    setVenueForm((prev: any) => ({ ...prev, amenities: prev.amenities.filter((_:any, i:number) => i !== index) }));
+  };
+
+  const handleAddBlockedDate = (value: string) => {
+    const v = value.trim();
+    if (!v) return;
+    setVenueForm((prev: any) => ({ ...prev, blockedDates: Array.from(new Set([...(prev.blockedDates || []), v])) }));
+  };
+
+  const handleRemoveBlockedDate = (index: number) => {
+    setVenueForm((prev: any) => ({ ...prev, blockedDates: prev.blockedDates.filter((_:any, i:number) => i !== index) }));
+  };
+
+  const handleApproveBooking = async (bookingId: string) => {
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'confirmed' }),
+      });
+
+      if (response.ok) {
+        setBookings(bookings.map(b => 
+          b.id === bookingId ? { ...b, status: 'confirmed' } : b
+        ));
+        setShowBookingModal(false);
+        setSelectedBooking(null);
+      }
+    } catch (error) {
+      console.error('Error approving booking:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectBooking = async (bookingId: string) => {
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+
+      if (response.ok) {
+        setBookings(bookings.map(b => 
+          b.id === bookingId ? { ...b, status: 'cancelled' } : b
+        ));
+        setShowBookingModal(false);
+        setSelectedBooking(null);
+      }
+    } catch (error) {
+      console.error('Error rejecting booking:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteBooking = async (bookingId: string) => {
+    if (!confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
+      return;
+    }
+    
+    setDeletingId(bookingId);
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setBookings(bookings.filter(b => b.id !== bookingId));
+        setShowBookingModal(false);
+        setSelectedBooking(null);
+        console.log('✅ Booking deleted successfully');
+      } else {
+        console.error('❌ Failed to delete booking:', result.error);
+        alert('Failed to delete booking: ' + result.error);
+      }
+    } catch (error) {
+      console.error('❌ Error deleting booking:', error);
+      alert('Error deleting booking');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const pendingBookings = bookings.filter(b => b.status === 'pending');
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
+  const totalRevenue = confirmedBookings.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0);
+  const pendingVenueRequests = venueRequests.filter(r => r.status === 'pending');
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'warning';
+      case 'confirmed': return 'success';
+      case 'approved': return 'success';
+      case 'completed': return 'primary';
+      case 'cancelled': return 'error';
+      case 'rejected': return 'error';
+      default: return 'default';
+    }
+  };
+
+  const stats = [
+    { label: 'Total Revenue', value: formatCurrency(totalRevenue), icon: IndianRupee },
+    { label: 'Total Bookings', value: bookings.length.toString(), icon: Calendar },
+    { label: 'Pending Bookings', value: pendingBookings.length.toString(), icon: Clock },
+    { label: 'Active Venues', value: venues.length.toString(), icon: Building2 },
+  ];
+
+  // Show loading while checking auth
+  if (authLoading || (!user && isLoading)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-foreground-muted">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!user || (role && role !== 'owner')) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background pt-20">
+      <div className="bg-background-card border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Owner Dashboard</h1>
+              <p className="text-foreground-muted">
+                Welcome back{user?.user_metadata?.name ? `, ${user.user_metadata.name}` : ''}!
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {pendingBookings.length > 0 && (
+                <div className="flex items-center gap-2 bg-warning/10 text-warning px-3 py-2 rounded-lg">
+                  <Bell className="w-4 h-4" />
+                  <span className="text-sm font-medium">{pendingBookings.length} pending</span>
+                </div>
+              )}
+              <Link href="/list-venue/onboarding">
+                <Button size="sm" leftIcon={<Plus className="w-4 h-4" />}>Add Venue</Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={handleSignOut} leftIcon={<LogOut className="w-4 h-4" />}>
+                Sign Out
+              </Button>
+            </div>
+          </div>
+          <div className="flex gap-1 mt-6 overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all relative',
+                  activeTab === tab.id
+                    ? 'bg-primary text-background'
+                    : 'text-foreground-muted hover:text-foreground hover:bg-background-light'
+                )}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+                {tab.id === 'bookings' && pendingBookings.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-error text-white text-xs rounded-full flex items-center justify-center">
+                    {pendingBookings.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="p-4">
+                <div className="skeleton h-10 w-10 rounded-lg mb-3" />
+                <div className="skeleton h-8 w-24 mb-2" />
+                <div className="skeleton h-4 w-20" />
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <>
+            {activeTab === 'overview' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {stats.map((stat, index) => (
+                    <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
+                      <Card className="p-4">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                          <stat.icon className="w-5 h-5 text-primary" />
+                        </div>
+                        <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                        <p className="text-sm text-foreground-muted">{stat.label}</p>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {pendingBookings.length > 0 && (
+                  <Card className="p-6 border-warning/50 bg-warning/5">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
+                        <AlertCircle className="w-6 h-6 text-warning" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-foreground mb-1">
+                          {pendingBookings.length} pending booking request(s)
+                        </h3>
+                        <p className="text-foreground-muted text-sm mb-3">Review and approve or reject these requests.</p>
+                        <Button size="sm" onClick={() => setActiveTab('bookings')}>Review Requests</Button>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {/* Venue Requests Status */}
+                {venueRequests.length > 0 && (
+                  <Card className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-foreground flex items-center gap-2">
+                        <Building2 className="w-5 h-5 text-primary" />
+                        Your Venue Submissions
+                      </h3>
+                      <Link href="/list-venue/onboarding">
+                        <Button size="sm" variant="outline" leftIcon={<Plus className="w-4 h-4" />}>
+                          Add Another
+                        </Button>
+                      </Link>
+                    </div>
+                    <div className="space-y-3">
+                      {venueRequests.map((request) => (
+                        <div 
+                          key={request.id} 
+                          className={`p-4 rounded-xl border ${
+                            request.status === 'pending' ? 'border-warning/30 bg-warning/5' :
+                            request.status === 'approved' ? 'border-success/30 bg-success/5' :
+                            'border-error/30 bg-error/5'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-medium text-foreground">{request.name}</h4>
+                                <Badge variant={getStatusColor(request.status) as any}>
+                                  {request.status === 'pending' ? 'Under Review' : request.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-foreground-muted mb-2">
+                                {request.type} • {request.address?.city || 'Unknown location'}
+                              </p>
+                              {request.status === 'pending' && (
+                                <p className="text-sm text-warning flex items-center gap-1">
+                                  <Clock className="w-4 h-4" />
+                                  Your venue is being reviewed by our team
+                                </p>
+                              )}
+                              {request.status === 'approved' && (
+                                <p className="text-sm text-success flex items-center gap-1">
+                                  <CheckCircle className="w-4 h-4" />
+                                  Your venue is now live and visible to guests!
+                                </p>
+                              )}
+                              {request.status === 'rejected' && (
+                                <div>
+                                  <p className="text-sm text-error flex items-center gap-1 mb-1">
+                                    <XCircle className="w-4 h-4" />
+                                    Unfortunately, your venue was not approved
+                                  </p>
+                                  {request.rejection_reason && (
+                                    <p className="text-sm text-foreground-muted bg-background-light p-2 rounded mt-2">
+                                      <strong>Reason:</strong> {request.rejection_reason}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            {request.images?.[0] && (
+                              <img 
+                                src={request.images[0]} 
+                                alt={request.name}
+                                className="w-16 h-16 rounded-lg object-cover shrink-0"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="font-semibold text-foreground">Recent Bookings</h3>
+                    <Button variant="ghost" size="sm" onClick={() => setActiveTab('bookings')}>
+                      View All <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                  {bookings.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Calendar className="w-12 h-12 text-foreground-muted mx-auto mb-4" />
+                      <p className="text-foreground-muted">No bookings yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {bookings.slice(0, 5).map((booking) => (
+                        <div key={booking.id} className="flex items-center justify-between p-4 bg-background-light rounded-xl hover:bg-background-light/80 cursor-pointer" onClick={() => { setSelectedBooking(booking); setShowBookingModal(true); }}>
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Building2 className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground">{booking.event_name}</p>
+                              <p className="text-sm text-foreground-muted">{booking.venue?.name || 'Unknown'} • {booking.date}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <Badge variant={getStatusColor(booking.status) as any}>{booking.status}</Badge>
+                            <ChevronRight className="w-5 h-5 text-foreground-muted" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </motion.div>
+            )}
+
+            {activeTab === 'bookings' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                {pendingBookings.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-warning" />
+                      Pending Requests ({pendingBookings.length})
+                    </h3>
+                    <div className="grid gap-4">
+                      {pendingBookings.map((booking) => (
+                        <Card key={booking.id} className="p-6 border-warning/30">
+                          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h4 className="font-semibold text-foreground">{booking.event_name}</h4>
+                                <Badge variant="warning">Pending</Badge>
+                              </div>
+                              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                                <div className="flex items-center gap-2 text-foreground-muted">
+                                  <Building2 className="w-4 h-4" />
+                                  {booking.venue?.name || 'Unknown'}
+                                </div>
+                                <div className="flex items-center gap-2 text-foreground-muted">
+                                  <Calendar className="w-4 h-4" />
+                                  {booking.date}
+                                </div>
+                                <div className="flex items-center gap-2 text-foreground-muted">
+                                  <User className="w-4 h-4" />
+                                  {booking.contact_name}
+                                </div>
+                                <div className="flex items-center gap-2 text-foreground-muted">
+                                  <IndianRupee className="w-4 h-4" />
+                                  {formatCurrency(booking.total_amount)}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" size="sm" onClick={() => { setSelectedBooking(booking); setShowBookingModal(true); }}>
+                                <Eye className="w-4 h-4 mr-1" />Details
+                              </Button>
+                              <Button variant="outline" size="sm" className="text-error hover:bg-error/10" onClick={() => handleRejectBooking(booking.id)} disabled={actionLoading}>
+                                <X className="w-4 h-4" />
+                              </Button>
+                              <Button variant="outline" size="sm" className="text-error hover:bg-error/10" onClick={() => handleDeleteBooking(booking.id)} disabled={deletingId === booking.id}>
+                                {deletingId === booking.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              </Button>
+                              <Button size="sm" onClick={() => handleApproveBooking(booking.id)} disabled={actionLoading}>
+                                <Check className="w-4 h-4 mr-1" />Approve
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="font-semibold text-foreground mb-4">All Bookings</h3>
+                  {bookings.length === 0 ? (
+                    <Card className="p-12 text-center">
+                      <Calendar className="w-12 h-12 text-foreground-muted mx-auto mb-4" />
+                      <p className="text-foreground-muted">No bookings yet</p>
+                    </Card>
+                  ) : (
+                    <Card className="overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-border bg-background-light">
+                              <th className="text-left py-3 px-4 text-sm font-medium text-foreground-muted">Event</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-foreground-muted">Venue</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-foreground-muted">Date</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-foreground-muted">Contact</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-foreground-muted">Amount</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-foreground-muted">Status</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-foreground-muted">Payment</th>
+                              <th className="text-right py-3 px-4 text-sm font-medium text-foreground-muted">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bookings.map((booking) => (
+                              <tr key={booking.id} className="border-b border-border/50 hover:bg-background-light">
+                                <td className="py-3 px-4">
+                                  <p className="font-medium text-foreground">{booking.event_name}</p>
+                                  <p className="text-xs text-foreground-muted">{booking.event_type}</p>
+                                </td>
+                                <td className="py-3 px-4 text-foreground-muted">{booking.venue?.name || '-'}</td>
+                                <td className="py-3 px-4 text-foreground-muted">{booking.date}</td>
+                                <td className="py-3 px-4 text-foreground-muted">{booking.contact_name}</td>
+                                <td className="py-3 px-4 text-foreground">{formatCurrency(booking.total_amount)}</td>
+                                <td className="py-3 px-4"><Badge variant={getStatusColor(booking.status) as any}>{booking.status}</Badge></td>
+                                <td className="py-3 px-4">
+                                  {booking.status === 'confirmed' && (
+                                    <>
+                                      <Badge variant={booking.deposit_paid ? 'success' : booking.deposit_expired ? 'error' : 'warning'}>
+                                        {booking.deposit_paid ? '✓ Deposit Paid' : booking.deposit_expired ? '⚠️ EXPIRED' : 'Awaiting Payment'}
+                                      </Badge>
+                                    </>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button variant="ghost" size="sm" onClick={() => { setSelectedBooking(booking); setShowBookingModal(true); }}>
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="text-error hover:bg-error/10"
+                                      onClick={() => handleDeleteBooking(booking.id)} 
+                                      disabled={deletingId === booking.id}
+                                    >
+                                      {deletingId === booking.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'venues' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {venues.map((venue) => (
+                    <Card key={venue._id} className="overflow-hidden">
+                      <img src={venue.images?.[0] || '/placeholder.jpg'} alt={venue.name} className="w-full h-48 object-cover" />
+                      <div className="p-4">
+                        <h4 className="font-semibold text-foreground mb-1">{venue.name}</h4>
+                        <p className="text-sm text-foreground-muted mb-3 flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {venue.address?.city}, {venue.address?.state}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                            <span className="text-sm font-medium">{venue.rating}</span>
+                          </div>
+                          <p className="text-primary font-semibold">{formatCurrency(venue.pricing?.hourly)}/hr</p>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <Badge variant={venue.availability === 'available' ? 'success' : venue.availability === 'maintenance' ? 'warning' : 'default'}>
+                            {venue.availability || 'available'}
+                          </Badge>
+                          <Button size="sm" onClick={() => openInventoryModal(venue)} className="whitespace-nowrap">
+                            <Pencil className="w-4 h-4 mr-1" />
+                            Edit
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                  <Link href="/list-venue/onboarding">
+                    <Card className="h-full min-h-70 flex items-center justify-center border-dashed hover:border-primary hover:bg-primary/5 transition-all cursor-pointer">
+                      <div className="text-center p-6">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                          <Plus className="w-6 h-6 text-primary" />
+                        </div>
+                        <p className="font-medium text-foreground">Add New Venue</p>
+                        <p className="text-sm text-foreground-muted">List your space</p>
+                      </div>
+                    </Card>
+                  </Link>
+                </div>
+              </motion.div>
+            )}
+          </>
+        )}
+      </div>
+
+      <Modal isOpen={showBookingModal} onClose={() => { setShowBookingModal(false); setSelectedBooking(null); }} title="Booking Details" size="lg">
+        {selectedBooking && (
+          <div className="p-6 space-y-6">
+            <div className={cn('p-4 rounded-xl', selectedBooking.status === 'pending' && 'bg-warning/10', selectedBooking.status === 'confirmed' && 'bg-success/10', selectedBooking.status === 'cancelled' && 'bg-error/10')}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Badge variant={getStatusColor(selectedBooking.status) as any} className="mb-2">{selectedBooking.status.toUpperCase()}</Badge>
+                  <h3 className="font-semibold text-foreground">{selectedBooking.event_name}</h3>
+                  <p className="text-sm text-foreground-muted">{selectedBooking.event_type}</p>
+                </div>
+                <p className="text-2xl font-bold text-primary">{formatCurrency(selectedBooking.total_amount)}</p>
+              </div>
+            </div>
+
+            {/* Payment Status Banner - Shows for confirmed bookings */}
+            {selectedBooking.status === 'confirmed' && (
+              <div className={cn(
+                'p-4 rounded-xl border',
+                selectedBooking.deposit_paid 
+                  ? 'bg-success/10 border-success/30' 
+                  : selectedBooking.deposit_expired
+                  ? 'bg-error/10 border-error/30'
+                  : 'bg-warning/10 border-warning/30'
+              )}>
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    'w-10 h-10 rounded-full flex items-center justify-center',
+                    selectedBooking.deposit_paid ? 'bg-success/20' : selectedBooking.deposit_expired ? 'bg-error/20' : 'bg-warning/20'
+                  )}>
+                    {selectedBooking.deposit_paid ? (
+                      <Check className="w-5 h-5 text-success" />
+                    ) : selectedBooking.deposit_expired ? (
+                      <AlertCircle className="w-5 h-5 text-error" />
+                    ) : (
+                      <Clock className="w-5 h-5 text-warning" />
+                    )}
+                  </div>
+                  <div>
+                    <p className={cn(
+                      'font-semibold',
+                      selectedBooking.deposit_paid ? 'text-success' : selectedBooking.deposit_expired ? 'text-error' : 'text-warning'
+                    )}>
+                      {selectedBooking.deposit_paid ? 'Deposit Payment Received!' : selectedBooking.deposit_expired ? 'Payment Expired!' : 'Awaiting Deposit Payment'}
+                    </p>
+                    <p className="text-sm text-foreground-muted">
+                      {selectedBooking.deposit_paid 
+                        ? `₹${selectedBooking.deposit_amount} received on ${new Date(selectedBooking.deposit_paid_at).toLocaleDateString('en-IN')}`
+                        : selectedBooking.deposit_expired
+                        ? `24+ hours passed without payment. Contact admin to cancel.`
+                        : `Renter needs to pay ₹${selectedBooking.deposit_amount} deposit`
+                      }
+                    </p>
+                  </div>
+                </div>
+                {selectedBooking.balance_paid && (
+                  <div className="mt-3 pt-3 border-t border-success/20">
+                    <p className="text-sm text-success">✓ Full payment received (Balance: ₹{selectedBooking.balance_amount})</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div><label className="text-sm text-foreground-muted">Venue</label><p className="font-medium text-foreground">{selectedBooking.venue?.name || 'Unknown'}</p></div>
+              <div><label className="text-sm text-foreground-muted">Date</label><p className="font-medium text-foreground">{selectedBooking.date}</p></div>
+              <div><label className="text-sm text-foreground-muted">Time</label><p className="font-medium text-foreground">{selectedBooking.start_time} - {selectedBooking.end_time}</p></div>
+              <div><label className="text-sm text-foreground-muted">Attendees</label><p className="font-medium text-foreground">{selectedBooking.attendees} people</p></div>
+            </div>
+            <div className="border-t border-border pt-4">
+              <h4 className="font-medium text-foreground mb-3">Contact Information</h4>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="flex items-center gap-2"><User className="w-4 h-4 text-foreground-muted" /><span className="text-foreground">{selectedBooking.contact_name}</span></div>
+                <div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-foreground-muted" /><span className="text-foreground">{selectedBooking.organization_name}</span></div>
+                <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-foreground-muted" /><span className="text-foreground">{selectedBooking.contact_email}</span></div>
+                <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-foreground-muted" /><span className="text-foreground">{selectedBooking.contact_phone}</span></div>
+              </div>
+            </div>
+            {selectedBooking.special_requirements && (
+              <div className="border-t border-border pt-4">
+                <h4 className="font-medium text-foreground mb-2">Special Requirements</h4>
+                <p className="text-foreground-muted">{selectedBooking.special_requirements}</p>
+              </div>
+            )}
+            <div className="border-t border-border pt-4">
+              <h4 className="font-medium text-foreground mb-3 flex items-center gap-2"><FileText className="w-4 h-4" />Verification Documents</h4>
+              <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                <div><label className="text-sm text-foreground-muted">Document Type</label><p className="font-medium text-foreground capitalize">{selectedBooking.kyc_document_type}</p></div>
+                <div><label className="text-sm text-foreground-muted">Contract Signed</label><p className="font-medium text-foreground">{selectedBooking.signature ? 'Yes' : 'No'}</p></div>
+              </div>
+              
+              {/* KYC Document Preview */}
+              {selectedBooking.kyc_document_url && selectedBooking.kyc_document_url !== 'pending' && selectedBooking.kyc_document_url !== 'deleted' && (
+                <div className="mb-4">
+                  <label className="text-sm text-foreground-muted block mb-2">ID Document ({selectedBooking.kyc_document_type})</label>
+                  <div className="border border-border rounded-lg overflow-hidden bg-background-light">
+                    <img 
+                      src={selectedBooking.kyc_document_url} 
+                      alt="KYC Document" 
+                      className="w-full max-h-64 object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <p className="hidden text-center py-4 text-foreground-muted">Unable to load document</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Face Photo Preview */}
+              {selectedBooking.kyc_face_photo_url && selectedBooking.kyc_face_photo_url !== 'pending' && selectedBooking.kyc_face_photo_url !== 'deleted' && (
+                <div className="mb-4">
+                  <label className="text-sm text-foreground-muted block mb-2">Face Verification Photo</label>
+                  <div className="border border-border rounded-lg overflow-hidden bg-background-light">
+                    <img 
+                      src={selectedBooking.kyc_face_photo_url} 
+                      alt="Face Photo" 
+                      className="w-full max-h-64 object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <p className="hidden text-center py-4 text-foreground-muted">Unable to load photo</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Warning about document deletion */}
+              {selectedBooking.status === 'pending' && (
+                <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 mt-3">
+                  <p className="text-sm text-warning flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    Documents will be automatically deleted after you approve or reject this booking.
+                  </p>
+                </div>
+              )}
+              
+              {(selectedBooking.kyc_document_url === 'deleted' || selectedBooking.kyc_face_photo_url === 'deleted') && (
+                <div className="bg-background-light border border-border rounded-lg p-3 mt-3">
+                  <p className="text-sm text-foreground-muted">
+                    KYC documents have been deleted as this booking has been processed.
+                  </p>
+                </div>
+              )}
+            </div>
+            {selectedBooking.status === 'pending' && (
+              <div className="flex gap-3 pt-4 border-t border-border">
+                <Button variant="outline" className="flex-1 text-error hover:bg-error/10" onClick={() => handleRejectBooking(selectedBooking.id)} disabled={actionLoading}>
+                  <X className="w-4 h-4 mr-2" />Reject
+                </Button>
+                <Button className="flex-1" onClick={() => handleApproveBooking(selectedBooking.id)} disabled={actionLoading}>
+                  <Check className="w-4 h-4 mr-2" />Approve
+                </Button>
+              </div>
+            )}
+            <div className="flex gap-3 pt-4 border-t border-border mt-4">
+              <Button 
+                variant="outline" 
+                className="flex-1 text-error hover:bg-error/10" 
+                onClick={() => handleDeleteBooking(selectedBooking.id)} 
+                disabled={deletingId === selectedBooking.id}
+              >
+                {deletingId === selectedBooking.id ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deleting...</>
+                ) : (
+                  <><Trash2 className="w-4 h-4 mr-2" />Delete Booking</>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={showInventoryModal}
+        onClose={() => {
+          setShowInventoryModal(false);
+          setSelectedVenue(null);
+        }}
+        title="Edit Venue Inventory"
+        size="md"
+      >
+        {selectedVenue && (
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="text-sm text-foreground-muted block mb-2">Availability</label>
+              <select
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                value={venueForm.availability}
+                onChange={(e) => setVenueForm((prev: any) => ({ ...prev, availability: e.target.value }))}
+              >
+                <option value="available">available</option>
+                <option value="hidden">hidden</option>
+                <option value="maintenance">maintenance</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm text-foreground-muted block mb-2">Inventory Visibility</label>
+              <select
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                value={venueForm.inventoryVisibility}
+                onChange={(e) => setVenueForm((prev: any) => ({ ...prev, inventoryVisibility: e.target.value }))}
+              >
+                <option value="public">public</option>
+                <option value="private">private</option>
+                <option value="draft">draft</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm text-foreground-muted block mb-2">Capacity Min</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                  value={venueForm.capacityMin}
+                  onChange={(e) => setVenueForm((prev: any) => ({ ...prev, capacityMin: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-foreground-muted block mb-2">Capacity Max</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                  value={venueForm.capacityMax}
+                  onChange={(e) => setVenueForm((prev: any) => ({ ...prev, capacityMax: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm text-foreground-muted block mb-2">Booking Slots</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                  value={venueForm.bookingSlots}
+                  onChange={(e) => setVenueForm((prev: any) => ({ ...prev, bookingSlots: e.target.value }))}
+                  placeholder="Morning, Afternoon, Evening"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-foreground-muted block mb-2">Blocked Dates</label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {(venueForm.blockedDates || []).map((d: string, i: number) => (
+                    <span key={i} className="inline-flex items-center gap-2 px-3 py-1 bg-background-light rounded-full text-sm text-foreground">
+                      {d}
+                      <button type="button" onClick={() => handleRemoveBlockedDate(i)} className="text-red-400 hover:text-red-500">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    className="flex-1 px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                    onChange={(e) => {
+                      if (e.target.value) handleAddBlockedDate(e.target.value);
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                  <p className="text-sm text-foreground-muted">Use the date picker to add blocked dates.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm text-foreground-muted block mb-2">Pricing Per Hour</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                  value={venueForm.pricingHourly}
+                  onChange={(e) => setVenueForm((prev: any) => ({ ...prev, pricingHourly: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-foreground-muted block mb-2">Minimum Booking Hours</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                  value={venueForm.minBookingHours}
+                  onChange={(e) => setVenueForm((prev: any) => ({ ...prev, minBookingHours: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm text-foreground-muted block mb-2">Available Timings</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                value={venueForm.availableTimings}
+                onChange={(e) => setVenueForm((prev: any) => ({ ...prev, availableTimings: e.target.value }))}
+                placeholder="09:00 AM - 10:00 PM"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="text-sm text-foreground-muted block mb-2">Venue Description</label>
+                <textarea
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground min-h-24"
+                  value={venueForm.description}
+                  onChange={(e) => setVenueForm((prev: any) => ({ ...prev, description: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-foreground-muted block mb-2">Amenities</label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {(venueForm.amenities || []).map((a: string, i: number) => (
+                    <span key={i} className="inline-flex items-center gap-2 px-3 py-1 bg-background-light rounded-full text-sm text-foreground">
+                      {a}
+                      <button type="button" onClick={() => handleRemoveAmenity(i)} className="text-red-400 hover:text-red-500">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Add amenity (e.g. WiFi)"
+                    className="flex-1 px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const v = (e.currentTarget as HTMLInputElement).value;
+                        handleAddAmenity(v);
+                        (e.currentTarget as HTMLInputElement).value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = (document.activeElement as HTMLElement) as HTMLInputElement;
+                      if (el && el.tagName === 'INPUT') {
+                        const v = (el as HTMLInputElement).value;
+                        handleAddAmenity(v);
+                        (el as HTMLInputElement).value = '';
+                      }
+                    }}
+                    className="px-3 py-2 bg-primary text-primary-foreground rounded-lg"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-foreground-muted block mb-2">Images</label>
+
+                <div className="grid grid-cols-4 gap-3 mb-3">
+                  {(venueForm.images || []).map((img: string, idx: number) => (
+                    <div key={idx} className="relative group">
+                      <img src={img} alt={`img-${idx}`} className="w-full aspect-video object-cover rounded-lg border border-border" />
+                      <button type="button" onClick={() => handleRemoveImage(idx)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*" onChange={(e) => handleImageUpload(e.target.files)} />
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-background-light border border-border rounded-lg">
+                    Upload Images
+                  </button>
+                  <p className="text-sm text-foreground-muted">Upload images directly — no URL copying required.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowInventoryModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={saveInventoryUpdates} disabled={savingVenue}>
+                {savingVenue ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
