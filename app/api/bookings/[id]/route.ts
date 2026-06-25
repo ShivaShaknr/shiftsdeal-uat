@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { razorpay } from "@/lib/razorpay";
 
 // Use service role key for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
@@ -106,6 +107,44 @@ export async function PATCH(
       );
     }
 
+    // let paymentLink: any = null;
+
+    // if (status === "confirmed" && booking.payment_status === "pending") {
+    //   paymentLink = await razorpay.paymentLink.create({
+    //     amount: Math.round(Number(booking.total_amount) * 100),
+    //     currency: "INR",
+    //     accept_partial: false,
+    //     description: `Deposit payment for ${booking.event_name}`,
+    //     customer: {
+    //       name: booking.contact_name,
+    //       email: booking.contact_email,
+    //       contact: booking.contact_phone,
+    //     },
+    //     notify: {
+    //       sms: true,
+    //       email: true,
+    //     },
+    //     reminder_enable: true,
+    //     reference_id: booking.id,
+    //     notes: {
+    //       booking_id: booking.id,
+    //       venue_id: booking.venue_id,
+    //       renter_id: booking.renter_id,
+    //       payment_type: "deposit",
+    //     },
+    //   });
+
+    //   await supabaseAdmin
+    //     .from("bookings")
+    //     .update({
+    //       razorpay_payment_link_id: paymentLink.id,
+    //       razorpay_payment_link_url: paymentLink.short_url,
+    //       payment_status: "link_sent",
+    //       updated_at: new Date().toISOString(),
+    //     })
+    //     .eq("id", booking.id);
+    // }
+
     // Delete KYC files after approve/reject (when status changes from pending)
     if (existingBooking && (status === 'confirmed' || status === 'cancelled')) {
       const filesToDelete: { bucket: string; path: string }[] = [];
@@ -147,6 +186,8 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       data: booking,
+      // razorpay_payment_link_id: paymentLink?.id || null,
+      // razorpay_payment_link_url: paymentLink?.short_url || null,
       message: `Booking ${status === 'confirmed' ? 'approved' : status}`,
     });
   } catch (error: any) {

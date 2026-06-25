@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
+import Script from "next/script";
 import {
   Calendar,
   MapPin,
@@ -270,8 +271,83 @@ export default function MyBookingsPage() {
     );
   }
 
+  const handlePayNow = async (bookingId: string) => {
+    try {
+
+      const response = await fetch(`/api/bookings/${bookingId}/pay`, {
+        method: "POST",
+      });
+  
+      const result = await response.json();
+      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  
+      if (!result.success) {
+        alert(result.error || "Failed to create payment order");
+        return;
+      }
+  
+      const options = {
+        key: razorpayKey,
+        amount: result.data.amount,
+        currency: result.data.currency,
+        name: "VERACT CONSULTANCY PRIVATE LIMITED",
+        description: `Payment for ${result.data.event_name}`,
+        order_id: result.data.order_id,
+  
+        prefill: {
+          name: result.data.contact_name,
+          email: result.data.contact_email,
+          contact: result.data.contact_phone,
+        },
+  
+        notes: {
+          booking_id: bookingId,
+        },
+        
+        handler: async function (paymentResponse: any) {
+          const verifyResponse = await fetch(`/api/bookings/${bookingId}/verify-payment`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              razorpay_order_id: paymentResponse.razorpay_order_id,
+              razorpay_payment_id: paymentResponse.razorpay_payment_id,
+              razorpay_signature: paymentResponse.razorpay_signature,
+            }),
+          });
+  
+          const verifyResult = await verifyResponse.json();
+  
+          if (verifyResult.success) {
+            alert("Payment successful");
+            window.location.reload();
+          } else {
+            alert("Payment verification failed");
+          }
+        },
+  
+        theme: {
+          color: "#2563eb",
+        },
+      };
+  
+      if (!(window as any).Razorpay) {
+        alert("Razorpay SDK not loaded");
+        return;
+      }
+      
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      console.error("Payment error:", error);
+      alert("Something went wrong while opening payment");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background py-8">
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -561,6 +637,17 @@ export default function MyBookingsPage() {
                               leftIcon={<Star className="w-4 h-4" />}
                             >
                               Rate
+                            </Button>
+                          )}
+                          {booking.status === 'confirmed' && booking.payment_status === 'pending' && (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              leftIcon={<CreditCard className="w-4 h-4" />}
+                              onClick={() => handlePayNow(booking._id)}
+                              className='cursor-pointer'
+                            >
+                              Pay Now
                             </Button>
                           )}
                           <Button
