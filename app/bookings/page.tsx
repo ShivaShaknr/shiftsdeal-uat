@@ -30,6 +30,11 @@ import { Button, Card, Badge } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
 
 const tabs = ['all', 'pending', 'upcoming', 'completed', 'cancelled'];
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 // Helper to download invoice - uses stored pricing from booking
 const downloadInvoice = (booking: any, venueDetails: any) => {
@@ -272,77 +277,70 @@ export default function MyBookingsPage() {
   }
 
   const handlePayNow = async (bookingId: string) => {
-    try {
-
-      const response = await fetch(`/api/bookings/${bookingId}/pay`, {
-        method: "POST",
-      });
+    const scriptLoaded = await loadRazorpayScript();
   
-      const result = await response.json();
-      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+    if (!scriptLoaded) {
+      alert("Razorpay SDK failed to load");
+      return;
+    }
   
-      if (!result.success) {
-        alert(result.error || "Failed to create payment order");
-        return;
-      }
+    const response = await fetch(`/api/bookings/${bookingId}/pay`, {
+      method: "POST",
+    });
   
-      const options = {
-        key: razorpayKey,
-        amount: result.data.amount,
-        currency: result.data.currency,
-        name: "VERACT CONSULTANCY PRIVATE LIMITED",
-        description: `Payment for ${result.data.event_name}`,
-        order_id: result.data.order_id,
+    const result = await response.json();
   
-        prefill: {
-          name: result.data.contact_name,
-          email: result.data.contact_email,
-          contact: result.data.contact_phone,
-        },
+    if (!result.success) {
+      alert(result.error || "Failed to create payment order");
+      return;
+    }
   
-        notes: {
-          booking_id: bookingId,
-        },
-        
-        handler: async function (paymentResponse: any) {
-          const verifyResponse = await fetch(`/api/bookings/${bookingId}/verify-payment`, {
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      amount: result.data.amount,
+      currency: result.data.currency,
+      name: "Shifts Deal",
+      description: "Booking Payment",
+      order_id: result.data.order_id,
+  
+      handler: async function (paymentResponse: any) {
+        const verifyResponse = await fetch(
+          `/api/bookings/${bookingId}/verify-payment`,
+          {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              razorpay_order_id: paymentResponse.razorpay_order_id,
-              razorpay_payment_id: paymentResponse.razorpay_payment_id,
-              razorpay_signature: paymentResponse.razorpay_signature,
-            }),
-          });
-  
-          const verifyResult = await verifyResponse.json();
-  
-          if (verifyResult.success) {
-            alert("Payment successful");
-            window.location.reload();
-          } else {
-            alert("Payment verification failed");
+            body: JSON.stringify(paymentResponse),
           }
-        },
+        );
   
-        theme: {
-          color: "#2563eb",
-        },
-      };
+        const verifyResult = await verifyResponse.json();
   
-      if (!(window as any).Razorpay) {
-        alert("Razorpay SDK not loaded");
-        return;
-      }
-      
-      const razorpay = new (window as any).Razorpay(options);
-      razorpay.open();
-    } catch (error) {
-      console.error("Payment error:", error);
-      alert("Something went wrong while opening payment");
-    }
+        if (verifyResult.success) {
+          alert("Payment successful");
+        } else {
+          alert(verifyResult.error || "Payment verification failed");
+        }
+      },
+  
+      theme: {
+        color: "#28282B",
+      },
+    };
+  
+    const razorpay = new window.Razorpay(options);
+    razorpay.open();
+  };
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
   };
 
   return (
@@ -472,156 +470,184 @@ export default function MyBookingsPage() {
                           </p>
                         </div>
                       </div>
-
-                      {/* Payment Instructions - Show when booking is confirmed */}
-                      {booking.status === 'confirmed' && !booking.deposit_paid && (
-                        <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
-                          <div className="flex items-start gap-3">
-                            <CheckCircle2 className="w-5 h-5 text-success mt-0.5" />
-                            <div className="flex-1">
-                              {process.env.NEXT_PUBLIC_PAYMENT_MODE === 'platform' ? (
-                                /* ── PLATFORM PAYMENT MODE: QR + UPI flow ── */
-                                <>
-                                  <h4 className="font-semibold text-foreground mb-2">Booking Approved! Complete Your Payment</h4>
-                                  <div className="space-y-3 text-sm">
-                                    <div className="bg-background/50 rounded-lg p-3">
-                                      <p className="text-foreground-muted mb-2">Pay deposit to confirm your booking:</p>
-                                      <div className="flex items-center justify-between">
-                                        <span className="font-semibold text-foreground">Deposit Amount (30%):</span>
-                                        <span className="text-lg font-bold text-primary">{formatCurrency(booking.deposit_amount || booking.depositAmount || Math.round((booking.totalAmount || booking.total_amount) * 0.3))}</span>
-                                      </div>
-                                    </div>
-                                    
-                                    <div className="space-y-2">
-                                      <p className="font-medium text-foreground flex items-center gap-2">
-                                        <IndianRupee className="w-4 h-4" />
-                                        Payment Options:
-                                      </p>
-                                      <div className="bg-background/50 rounded-lg p-3 space-y-3">
-                                        <div className="flex flex-col sm:flex-row gap-4">
-                                          {/* QR Code */}
-                                          <div className="flex-shrink-0">
-                                            <p className="text-xs text-foreground-muted mb-2 text-center">Scan to Pay</p>
-                                            <img 
-                                              src="/QR.jpeg" 
-                                              alt="Payment QR Code" 
-                                              className="w-32 h-32 rounded-lg border border-border"
-                                            />
-                                          </div>
-                                          
-                                          {/* UPI Details */}
-                                          <div className="flex-1 space-y-2">
-                                            <div className="flex items-center justify-between">
-                                              <span className="text-foreground-muted">UPI ID:</span>
-                                              <div className="flex items-center gap-2">
-                                                <code className="bg-primary/10 text-primary px-2 py-1 rounded text-sm font-mono">
-                                                  shiftsdeal@upi
-                                                </code>
-                                                <button 
-                                                  onClick={() => {
-                                                    navigator.clipboard.writeText('shiftsdeal@upi');
-                                                    alert('UPI ID copied!');
-                                                  }}
-                                                  className="text-primary hover:text-primary/80"
-                                                >
-                                                  <Copy className="w-4 h-4" />
-                                                </button>
-                                              </div>
-                                            </div>
-                                            <p className="text-xs text-foreground-muted">
-                                              Pay via any UPI app (GPay, PhonePe, Paytm, etc.)
-                                            </p>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <div className="flex items-start gap-2 text-foreground-muted">
-                                      <Phone className="w-4 h-4 mt-0.5" />
-                                      <div>
-                                        <p>Our team will call you at <strong className="text-foreground">{booking.contact_phone || booking.contactPhone}</strong> to confirm payment details.</p>
-                                      </div>
-                                    </div>
-
-                                    <div className="flex items-start gap-2 text-warning">
-                                      <AlertCircle className="w-4 h-4 mt-0.5" />
-                                      <p className="text-sm">Pay deposit within 24 hours to secure your booking. Balance due 7 days before event.</p>
-                                    </div>
-                                  </div>
-                                </>
-                              ) : (
-                                /* ── DIRECT MODE: ShiftsDeal contacts the user ── */
-                                <>
-                                  <h4 className="font-semibold text-foreground mb-2">Your Request Has Been Approved! 🎉</h4>
-                                  <p className="text-sm text-foreground-muted mb-3">
-                                    ShiftsDeal will reach out to you in the next 24 hours from{' '}
-                                    <a href="mailto:team.shiftsdeal@gmail.com" className="text-primary underline">
-                                      team.shiftsdeal@gmail.com
-                                    </a>{' '}
-                                    with further instructions to complete your booking.
-                                  </p>
-                                  <div className="flex items-start gap-2 text-foreground-muted text-sm">
-                                    <AlertCircle className="w-4 h-4 mt-0.5 text-warning flex-shrink-0" />
-                                    <p>Please check your inbox (and spam folder) for an email from us.</p>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Payment Confirmed - Show when deposit is paid */}
-                      {booking.status === 'confirmed' && booking.deposit_paid && (
-                        <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
-                          <div className="flex items-start gap-3">
-                            <CheckCircle2 className="w-5 h-5 text-success mt-0.5" />
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-success mb-1">Payment Received!</h4>
-                              <p className="text-sm text-foreground-muted mb-3">
-                                Your deposit of {formatCurrency(booking.deposit_amount || booking.depositAmount)} has been confirmed.
-                                {booking.deposit_paid_at && (
-                                  <span className="block text-xs mt-1">
-                                    Paid on: {new Date(booking.deposit_paid_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                  </span>
-                                )}
-                              </p>
-                              
-                              <div className="bg-background/50 rounded-lg p-3 space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-foreground-muted">Total Amount:</span>
-                                  <span className="font-medium text-foreground">{formatCurrency(booking.totalAmount || booking.total_amount)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-foreground-muted">Deposit Paid:</span>
-                                  <span className="font-medium text-success">✓ {formatCurrency(booking.deposit_amount || booking.depositAmount)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm border-t border-border pt-2">
-                                  <span className="text-foreground-muted">Balance Due:</span>
-                                  <span className="font-semibold text-primary">{formatCurrency(booking.balance_amount || booking.balanceAmount)}</span>
-                                </div>
-                                <p className="text-xs text-foreground-muted pt-1">
-                                  Balance payment due 7 days before event date
-                                </p>
-                              </div>
-
-                              {booking.balance_paid && (
-                                <div className="mt-3 p-3 bg-success/20 rounded-lg">
-                                  <p className="text-sm text-success font-medium">✓ Full payment received! Your booking is fully confirmed.</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Pending Status Message */}
                       {booking.status === 'pending' && (
                         <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-4">
-                          <div className="flex items-center gap-2 text-warning">
-                            <Clock className="w-4 h-4" />
-                            <p className="text-sm">Awaiting venue owner approval. You'll be notified once confirmed.</p>
+                         <div className="flex items-center gap-2 text-warning">
+                           <Clock className="w-4 h-4" />
+                           <p className="text-sm">Awaiting venue owner approval. You'll be notified once confirmed.</p>
+                         </div>
+                        </div>
+                      )}
+                      {booking.status === 'confirmed' && booking.payment_status === 'fully_paid' && (
+                         <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
+                         <div className="flex items-start gap-3">
+                           <CheckCircle2 className="w-5 h-5 text-success mt-0.5" />
+                           <div className="flex-1">
+                             <h4 className="font-semibold text-success mb-1">Payment Received!</h4>
+                             <p className="text-sm text-foreground-muted mb-3">
+                               Your deposit of {formatCurrency(booking.deposit_amount || booking.depositAmount)} has been confirmed.
+                               {booking.deposit_paid_at && (
+                                 <span className="block text-xs mt-1">
+                                   Paid on: {new Date(booking.deposit_paid_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                 </span>
+                               )}
+                             </p>
+                             
+                             <div className="bg-background/50 rounded-lg p-3 space-y-2">
+                               <div className="flex justify-between text-sm">
+                                 <span className="text-foreground-muted">Total Amount:</span>
+                                 <span className="font-medium text-foreground">{formatCurrency(booking.totalAmount || booking.total_amount)}</span>
+                               </div>
+                               <div className="flex justify-between text-sm">
+                                 <span className="text-foreground-muted">Deposit Paid:</span>
+                                 <span className="font-medium text-success">✓ {formatCurrency(booking.deposit_amount || booking.depositAmount)}</span>
+                               </div>
+                               <div className="flex justify-between text-sm border-t border-border pt-2">
+                                 <span className="text-foreground-muted">Balance Due:</span>
+                                 <span className="font-semibold text-primary">{formatCurrency(booking.balance_amount || booking.balanceAmount)}</span>
+                               </div>
+                               <p className="text-xs text-foreground-muted pt-1">
+                                 Balance payment due 7 days before event date
+                               </p>
+                             </div>
+
+                             {booking.balance_paid && (
+                               <div className="mt-3 p-3 bg-success/20 rounded-lg">
+                                 <p className="text-sm text-success font-medium">✓ Full payment received! Your booking is fully confirmed.</p>
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                      )}
+                      {booking.status === 'confirmed' && booking.payment_status === 'pending' && (
+                        <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
+                         <div className="flex items-start gap-3">
+                           <CheckCircle2 className="w-5 h-5 text-success mt-0.5" />
+                           <div className="flex-1">
+                             {process.env.NEXT_PUBLIC_PAYMENT_MODE === 'platform' ? (
+                               /* ── PLATFORM PAYMENT MODE: QR + UPI flow ── */
+                               <>
+                                 <h4 className="font-semibold text-foreground mb-2">Booking Approved! Complete Your Payment</h4>
+                                 <div className="space-y-3 text-sm">
+                                   <div className="bg-background/50 rounded-lg p-3">
+                                     <p className="text-foreground-muted mb-2">Pay deposit to confirm your booking:</p>
+                                     <div className="flex items-center justify-between">
+                                       <span className="font-semibold text-foreground">Deposit Amount (30%):</span>
+                                       <span className="text-lg font-bold text-primary">{formatCurrency(booking.deposit_amount || booking.depositAmount || Math.round((booking.totalAmount || booking.total_amount) * 0.3))}</span>
+                                     </div>
+                                   </div>
+                                   
+                                   <div className="space-y-2">
+                                     <p className="font-medium text-foreground flex items-center gap-2">
+                                       <IndianRupee className="w-4 h-4" />
+                                       Payment Options:
+                                     </p>
+                                     <div className="bg-background/50 rounded-lg p-3 space-y-3">
+                                       <div className="flex flex-col sm:flex-row gap-4">
+                                         {/* QR Code */}
+                                         <div className="flex-shrink-0">
+                                           <p className="text-xs text-foreground-muted mb-2 text-center">Scan to Pay</p>
+                                           <img 
+                                             src="/QR.jpeg" 
+                                             alt="Payment QR Code" 
+                                             className="w-32 h-32 rounded-lg border border-border"
+                                           />
+                                         </div>
+                                         
+                                         {/* UPI Details */}
+                                         <div className="flex-1 space-y-2">
+                                           <div className="flex items-center justify-between">
+                                             <span className="text-foreground-muted">UPI ID:</span>
+                                             <div className="flex items-center gap-2">
+                                               <code className="bg-primary/10 text-primary px-2 py-1 rounded text-sm font-mono">
+                                                 shiftsdeal@upi
+                                               </code>
+                                               <button 
+                                                 onClick={() => {
+                                                   navigator.clipboard.writeText('shiftsdeal@upi');
+                                                   alert('UPI ID copied!');
+                                                 }}
+                                                 className="text-primary hover:text-primary/80"
+                                               >
+                                                 <Copy className="w-4 h-4" />
+                                               </button>
+                                             </div>
+                                           </div>
+                                           <p className="text-xs text-foreground-muted">
+                                             Pay via any UPI app (GPay, PhonePe, Paytm, etc.)
+                                           </p>
+                                         </div>
+                                       </div>
+                                     </div>
+                                   </div>
+
+                                   <div className="flex items-start gap-2 text-foreground-muted">
+                                     <Phone className="w-4 h-4 mt-0.5" />
+                                     <div>
+                                       <p>Our team will call you at <strong className="text-foreground">{booking.contact_phone || booking.contactPhone}</strong> to confirm payment details.</p>
+                                     </div>
+                                   </div>
+
+                                   <div className="flex items-start gap-2 text-warning">
+                                     <AlertCircle className="w-4 h-4 mt-0.5" />
+                                     <p className="text-sm">Pay deposit within 24 hours to secure your booking. Balance due 7 days before event.</p>
+                                   </div>
+                                 </div>
+                               </>
+                             ) : (
+                               /* ── DIRECT MODE: ShiftsDeal contacts the user ── */
+                               <>
+                                 <h4 className="font-semibold text-foreground mb-2">Your Request Has Been Approved! 🎉</h4>
+                                 <p className="text-sm text-foreground-muted mb-3">
+                                   ShiftsDeal will reach out to you in the next 24 hours from{' '}
+                                   <a href="mailto:team.shiftsdeal@gmail.com" className="text-primary underline">
+                                     team.shiftsdeal@gmail.com
+                                   </a>{' '}
+                                   with further instructions to complete your booking.
+                                 </p>
+                                 <div className="flex items-start gap-2 text-foreground-muted text-sm">
+                                   <AlertCircle className="w-4 h-4 mt-0.5 text-warning flex-shrink-0" />
+                                   <p>Please check your inbox (and spam folder) for an email from us.</p>
+                                 </div>
+                               </>
+                             )}
+                           </div>
+                         </div>
+                        </div>
+                      )}
+                      {booking.status === 'completed' && (
+                        <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
+                          <div className="flex items-start gap-3">
+                            <CheckCircle2 className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                      
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-foreground mb-1">
+                                Booking Completed
+                              </h4>
+                      
+                              <p className="text-sm text-foreground-muted">
+                                Your booking has been successfully completed. Thank you for choosing ShiftsDeal.
+                              </p>
+                            </div>
                           </div>
+                        </div>
+                      )}
+                      {booking.status === 'cancelled' && (
+                        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+                    
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-foreground mb-1">
+                              Booking Cancelled
+                            </h4>
+                    
+                            <p className="text-sm text-foreground-muted">
+                              This booking has been cancelled. Please contact our team if you need more details.
+                            </p>
+                          </div>
+                        </div>
                         </div>
                       )}
 
