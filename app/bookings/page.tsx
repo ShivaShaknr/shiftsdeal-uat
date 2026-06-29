@@ -302,6 +302,7 @@ export default function MyBookingsPage() {
       name: "Shifts Deal",
       description: "Booking Payment",
       order_id: result.data.order_id,
+
   
       handler: async function (paymentResponse: any) {
         const verifyResponse = await fetch(
