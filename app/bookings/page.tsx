@@ -302,7 +302,12 @@ export default function MyBookingsPage() {
       name: "Shifts Deal",
       description: "Booking Payment",
       order_id: result.data.order_id,
-
+      method: {
+        upi: true,
+        card: true,
+        netbanking: true,
+        wallet: true,
+      },
   
       handler: async function (paymentResponse: any) {
         const verifyResponse = await fetch(

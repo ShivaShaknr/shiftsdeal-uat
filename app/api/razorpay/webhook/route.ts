@@ -11,13 +11,6 @@ const supabase = createClient(
 );
 
 /* ----------------------------------
-   TEST OWNER DETAILS
----------------------------------- */
-
-const OWNER_NAME = "Test Venue Owner";
-const OWNER_UPI_ID = "success@razorpay";
-
-/* ----------------------------------
    1. VERIFY RAZORPAY WEBHOOK
 ---------------------------------- */
 
@@ -85,9 +78,13 @@ async function callRazorpayX(
    3. CREATE RAZORPAYX CONTACT
 ---------------------------------- */
 
-async function createContact(bookingId: string, shortBookingRef: string) {
+async function createContact(
+  bookingId: string,
+  shortBookingRef: string,
+  ownerName: string
+) {
   const contact = await callRazorpayX("contacts", {
-    name: OWNER_NAME,
+    name: ownerName,
     type: "vendor",
     reference_id: shortBookingRef,
     notes: {
@@ -104,12 +101,12 @@ async function createContact(bookingId: string, shortBookingRef: string) {
    4. CREATE FUND ACCOUNT USING UPI
 ---------------------------------- */
 
-async function createFundAccount(contactId: string) {
+async function createFundAccount(contactId: string, ownerUpiId: string) {
   const fundAccount = await callRazorpayX("fund_accounts", {
     contact_id: contactId,
     account_type: "vpa",
     vpa: {
-      address: OWNER_UPI_ID,
+      address: ownerUpiId,
     },
   });
 
@@ -127,6 +124,8 @@ async function createPayout(params: {
   fundAccountId: string;
   amountInPaise: number;
   shortBookingRef: string;
+  ownerName: string;
+  ownerUpiId: string;
 }) {
   const idempotencyKey = `po_${params.bookingId
     .replaceAll("-", "")
@@ -146,8 +145,8 @@ async function createPayout(params: {
       narration: "Venue owner payout",
       notes: {
         booking_id: params.bookingId,
-        owner_name: OWNER_NAME,
-        owner_upi_id: OWNER_UPI_ID,
+        owner_name: params.ownerName,
+        owner_upi_id: params.ownerUpiId,
       },
     },
     idempotencyKey
@@ -165,20 +164,28 @@ async function createPayout(params: {
 async function createOwnerPayout(params: {
   bookingId: string;
   amountInPaise: number;
+  ownerName: string;
+  ownerUpiId: string;
 }) {
   const shortBookingRef = `bk_${params.bookingId
     .replaceAll("-", "")
     .slice(0, 30)}`;
 
-  const contact = await createContact(params.bookingId, shortBookingRef);
+  const contact = await createContact(
+    params.bookingId,
+    shortBookingRef,
+    params.ownerName
+  );
 
-  const fundAccount = await createFundAccount(contact.id);
+  const fundAccount = await createFundAccount(contact.id, params.ownerUpiId);
 
   const payout = await createPayout({
     bookingId: params.bookingId,
     fundAccountId: fundAccount.id,
     amountInPaise: params.amountInPaise,
     shortBookingRef,
+    ownerName: params.ownerName,
+    ownerUpiId: params.ownerUpiId,
   });
 
   return {
@@ -201,6 +208,23 @@ async function handlePaymentCaptured(event: any) {
     throw new Error("Booking ID missing in Razorpay notes");
   }
 
+  const { data: booking, error: bookingError } = await supabase
+    .from("bookings")
+    .select("contact_name, contact_email, contact_phone, event_name, upi_id")
+    .eq("id", bookingId)
+    .single();
+
+  if (bookingError || !booking) {
+    throw new Error("Booking not found");
+  }
+
+  if (!booking.upi_id) {
+    throw new Error("UPI ID missing on booking");
+  }
+
+  const ownerName = booking.contact_name;
+  const ownerUpiId = booking.upi_id;
+
   const totalAmountInPaise = payment.amount;
 
   const adminAmountInPaise = Math.round(totalAmountInPaise * 0.1);
@@ -215,15 +239,50 @@ async function handlePaymentCaptured(event: any) {
     ownerPayout: ownerAmountInPaise / 100,
   });
 
+  // 1. Update booking status and payment status
   await supabase.from('bookings').update({
     status: 'completed',
-    payment_status:'fully_paid'
+    payment_status:'fully_paid',
+    razorpay_payment_id: payment.id,
+    razorpay_order_id: payment.order_id,
   }).eq('id', bookingId);
+
+   // 2. Create invoice ONLY after payment.captured
+   try {
+    const invoice = await createRazorpayInvoice({
+      bookingId,
+      customerName: booking.contact_name,
+      customerEmail: booking.contact_email,
+      customerPhone: booking.contact_phone,
+      eventName: booking.event_name,
+      amountInPaise: totalAmountInPaise,
+    });
+
+    await supabase
+      .from("bookings")
+      .update({
+        razorpay_invoice_id: invoice.id,
+        razorpay_invoice_status: invoice.status,
+        razorpay_invoice_url: invoice.short_url || null,
+      })
+      .eq("id", bookingId);
+
+    console.log("Invoice saved in Supabase:", {
+      bookingId,
+      invoice_id: invoice.id,
+      invoice_status: invoice.status,
+      invoice_url: invoice.short_url,
+    });
+  } catch (error: any) {
+    console.error("Invoice creation failed:", error.message);
+  }
 
   try {
     const payoutResult = await createOwnerPayout({
       bookingId,
       amountInPaise: ownerAmountInPaise,
+      ownerName,
+      ownerUpiId,
     });
 
     console.log("Payout initiated successfully:", {
@@ -235,10 +294,6 @@ async function handlePaymentCaptured(event: any) {
     });
   } catch (error: any) {
     console.error("Payout creation failed:", error.message);
-
-    // Important:
-    // Do not throw here now.
-    // Otherwise Razorpay will retry payment.captured webhook again and again.
   }
 }
 
@@ -249,15 +304,23 @@ async function handlePaymentCaptured(event: any) {
 async function handlePayoutStatusUpdate(event: any) {
   const payout = event.payload.payout.entity;
 
-  const bookingId = payout.notes?.booking_id;
+  const bookingId = payout.notes?.booking_id || null;
 
-  console.log("Payout webhook received:", {
-    event: event.event,
-    bookingId,
+  console.log("✅ RazorpayX payout status webhook:", {
+    webhook_event: event.event,
+    booking_id: bookingId,
     payout_id: payout.id,
-    payout_status: payout.status,
+    status: payout.status,
+    amount: payout.amount / 100,
+    utr: payout.utr || null,
+    mode: payout.mode,
+    fund_account_id: payout.fund_account_id,
     failure_reason:
-      payout.failure_reason || payout.status_details?.description || null,
+      payout.failure_reason ||
+      payout.status_details?.description ||
+      payout.status_details?.reason ||
+      null,
+    created_at: payout.created_at,
   });
 }
 
@@ -267,6 +330,7 @@ async function handlePayoutStatusUpdate(event: any) {
 
 export async function POST(req: Request) {
   try {
+    console.log("🔥 Webhook endpoint hit");
     const rawBody = await req.text();
 
     const razorpaySignature = req.headers.get("x-razorpay-signature");
@@ -282,6 +346,7 @@ export async function POST(req: Request) {
     }
 
     if (
+      event.event === "payout.processing" ||
       event.event === "payout.processed" ||
       event.event === "payout.failed" ||
       event.event === "payout.reversed"
@@ -301,4 +366,67 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+}
+
+/* ----------------------------------
+   10. CREATE RAZORPAY INVOICE
+---------------------------------- */
+
+async function createRazorpayInvoice(params: {
+  bookingId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  eventName: string;
+  amountInPaise: number;
+}) {
+  const auth = Buffer.from(
+    `${process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
+  ).toString("base64");
+
+  const response = await fetch("https://api.razorpay.com/v1/invoices", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "invoice",
+      description: `Invoice for ${params.eventName}`,
+      customer: {
+        name: params.customerName,
+        email: params.customerEmail,
+        contact: params.customerPhone,
+      },
+      line_items: [
+        {
+          name: params.eventName,
+          description: `Venue booking payment`,
+          amount: params.amountInPaise,
+          currency: "INR",
+          quantity: 1,
+        },
+      ],
+      notes: {
+        booking_id: params.bookingId,
+      },
+      sms_notify: 0,
+      email_notify: 0,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error("Razorpay invoice creation failed:", data);
+    throw new Error(data.error?.description || "Invoice creation failed");
+  }
+
+  console.log("✅ Razorpay invoice created:", {
+    invoice_id: data.id,
+    status: data.status,
+    short_url: data.short_url,
+  });
+
+  return data;
 }

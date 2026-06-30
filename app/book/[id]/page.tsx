@@ -20,15 +20,17 @@ import {
   AlertTriangle,
   Download,
   Loader2,
+  Wallet,
 } from 'lucide-react';
 import { Button, Card, Input, Badge, WebcamCapture } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
 
-type BookingStep = 'details' | 'kyc' | 'contract' | 'confirm';
+type BookingStep = 'details' | 'kyc' | 'contract' | 'confirm' | 'bank';
 
 const steps: { id: BookingStep; label: string; icon: any }[] = [
   { id: 'details', label: 'Event Details', icon: User },
   { id: 'kyc', label: 'Verification', icon: Upload },
+  { id: 'bank', label: 'Bank Details', icon: Wallet },
   { id: 'contract', label: 'Contract & Sign', icon: FileText },
   { id: 'confirm', label: 'Confirm', icon: CheckCircle },
 ];
@@ -64,6 +66,9 @@ export default function BookingPage() {
     kycFacePhoto: null as File | null,
     kycFacePhotoName: '',
     specialRequirements: '',
+
+    // Bank
+    upiId: '',
 
     // Contract
     contractAccepted: false,
@@ -383,6 +388,9 @@ export default function BookingPage() {
     return true;
   };
 
+  const isValidUpiId = (upi: string) =>
+    /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/.test(upi.trim());
+
   const validateEventDetails = () => {
     // Check required fields
     if (!formData.eventType || !formData.eventName || !formData.attendees || 
@@ -442,9 +450,6 @@ export default function BookingPage() {
   };
 
   const goToNextStep = async () => {
-    const stepOrder: BookingStep[] = ['details', 'kyc', 'contract', 'confirm'];
-    const currentIndex = stepOrder.indexOf(currentStep);
-
     if (currentStep === 'details') {
       if (!validateEventDetails()) {
         return;
@@ -453,6 +458,16 @@ export default function BookingPage() {
     } else if (currentStep === 'kyc') {
       if (!kycResult) {
         await processKYC();
+      }
+      setCurrentStep('bank');
+    } else if (currentStep === 'bank') {
+      if (!formData.upiId.trim()) {
+        alert('Please enter your UPI ID');
+        return;
+      }
+      if (!isValidUpiId(formData.upiId)) {
+        alert('Please enter a valid UPI ID (e.g. yourname@paytm)');
+        return;
       }
       setCurrentStep('contract');
     } else if (currentStep === 'contract') {
@@ -469,7 +484,7 @@ export default function BookingPage() {
   };
 
   const goToPreviousStep = () => {
-    const stepOrder: BookingStep[] = ['details', 'kyc', 'contract', 'confirm'];
+    const stepOrder: BookingStep[] = ['details', 'kyc', 'bank', 'contract', 'confirm'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(stepOrder[currentIndex - 1]);
@@ -535,6 +550,7 @@ export default function BookingPage() {
         contact_name: formData.contactName,
         contact_email: formData.contactEmail,
         contact_phone: formData.contactPhone,
+        upi_id: formData.upiId.trim(),
         special_requirements: formData.specialRequirements,
         kyc_document_type: formData.kycDocumentType,
         kyc_document_url: kycDocumentUrl || 'pending',
@@ -993,7 +1009,35 @@ export default function BookingPage() {
                   </motion.div>
                 )}
 
-                {/* Step 3: Contract */}
+                {/* Step 3: Bank Details */}
+                {currentStep === 'bank' && (
+                  <motion.div
+                    key="bank"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-6"
+                  >
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground mb-2">Bank Details</h2>
+                      <p className="text-foreground-muted">
+                        Enter your UPI ID for payment processing.
+                      </p>
+                      <p className="text-[10px] text-foreground-muted">
+                        <span className="font-bold">Note:</span> We will use this UPI ID for payment processing.
+                      </p>
+                    </div>
+                    <Input
+                      label="UPI ID"
+                      placeholder="yourname@paytm"
+                      value={formData.upiId}
+                      onChange={(e) => handleInputChange('upiId', e.target.value)}
+                      required
+                    />
+                  </motion.div>
+                )}
+
+                {/* Step 4: Contract */}
                 {currentStep === 'contract' && (
                   <motion.div
                     key="contract"
@@ -1079,7 +1123,6 @@ export default function BookingPage() {
                     )}
                   </motion.div>
                 )}
-
                 {/* Step 5: Confirm */}
                 {currentStep === 'confirm' && (
                   <motion.div
