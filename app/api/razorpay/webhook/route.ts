@@ -4,11 +4,64 @@ import crypto from "crypto";
 export const runtime = "nodejs";
 
 import { createClient } from "@supabase/supabase-js";
+import { sendMail } from "@/lib/communication/sendMail";
+import { paymentSuccessEmail } from "@/lib/communication/emailTemplates/paymentSuccessEmail";
+import { paymentFailedEmail } from "@/lib/communication/emailTemplates/paymentFailedEmail";
+import { venueCommisionSuccessEmail } from "@/lib/communication/emailTemplates/venueCommisionSuccess";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+async function getVenueOwner(venueId: string) {
+  const { data: venue } = await supabase
+    .from("venues")
+    .select("owner_id")
+    .eq("id", venueId)
+    .single();
+
+  if (venue?.owner_id) {
+    const { data: owner } = await supabase
+      .from("users")
+      .select("name, email")
+      .eq("id", venue.owner_id)
+      .single();
+
+    if (owner?.email) {
+      return { name: owner.name, email: owner.email };
+    }
+  }
+
+  const { data: ownership } = await supabase
+    .from("venue_ownerships")
+    .select("owner_email, owner_full_name, owner_user_id")
+    .eq("venue_id", venueId)
+    .eq("is_active", true)
+    .eq("is_primary", true)
+    .maybeSingle();
+
+  if (ownership?.owner_user_id) {
+    const { data: owner } = await supabase
+      .from("users")
+      .select("name, email")
+      .eq("id", ownership.owner_user_id)
+      .single();
+
+    if (owner?.email) {
+      return { name: owner.name, email: owner.email };
+    }
+  }
+
+  if (ownership?.owner_email) {
+    return {
+      name: ownership.owner_full_name || "Owner",
+      email: ownership.owner_email,
+    };
+  }
+
+  return null;
+}
 
 /* ----------------------------------
    1. VERIFY RAZORPAY WEBHOOK
@@ -38,12 +91,6 @@ async function callRazorpayX(
   body: any,
   idempotencyKey?: string
 ) {
-  console.log("RazorpayX ENV check:", {
-    keyIdExists: !!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-    keySecretExists: !!process.env.RAZORPAY_KEY_SECRET,
-    accountNumberExists: !!process.env.RAZORPAYX_ACCOUNT_NUMBER,
-    keyIdPrefix: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.slice(0, 8),
-  });
 
   const auth = Buffer.from(
     `${process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
@@ -92,8 +139,6 @@ async function createContact(
     },
   });
 
-  console.log("RazorpayX contact created:", contact.id);
-
   return contact;
 }
 
@@ -109,8 +154,6 @@ async function createFundAccount(contactId: string, ownerUpiId: string) {
       address: ownerUpiId,
     },
   });
-
-  console.log("RazorpayX fund account created:", fundAccount.id);
 
   return fundAccount;
 }
@@ -151,8 +194,6 @@ async function createPayout(params: {
     },
     idempotencyKey
   );
-
-  console.log("RazorpayX payout created:", payout.id);
 
   return payout;
 }
@@ -210,7 +251,9 @@ async function handlePaymentCaptured(event: any) {
 
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
-    .select("contact_name, contact_email, contact_phone, event_name, upi_id")
+    .select(
+      "contact_name, contact_email, contact_phone, event_name, upi_id, payment_status, venue_id, base_price"
+    )
     .eq("id", bookingId)
     .single();
 
@@ -222,33 +265,76 @@ async function handlePaymentCaptured(event: any) {
     throw new Error("UPI ID missing on booking");
   }
 
-  const ownerName = booking.contact_name;
   const ownerUpiId = booking.upi_id;
 
   const totalAmountInPaise = payment.amount;
+  const ownerAmountInPaise = Math.round(Number(booking.base_price) * 100);
+  const venueOwner = await getVenueOwner(booking.venue_id);
 
-  const adminAmountInPaise = Math.round(totalAmountInPaise * 0.1);
-  const ownerAmountInPaise = totalAmountInPaise - adminAmountInPaise;
+  /**
+   * IMPORTANT:
+   * Webhook can come multiple times.
+   * This update only works if payment_status is NOT already fully_paid.
+   * If already fully_paid, function returns and email/invoice/payout will not repeat.
+   */
+  const { data: updatedBooking, error: updateError } = await supabase
+    .from("bookings")
+    .update({
+      status: "completed",
+      payment_status: "fully_paid",
+      razorpay_payment_id: payment.id,
+      razorpay_order_id: payment.order_id,
+    })
+    .eq("id", bookingId)
+    .neq("payment_status", "fully_paid")
+    .select("id")
+    .single();
 
-  console.log("Payment captured:", {
-    bookingId,
-    razorpay_payment_id: payment.id,
-    razorpay_order_id: payment.order_id,
-    totalAmount: totalAmountInPaise / 100,
-    adminCommission: adminAmountInPaise / 100,
-    ownerPayout: ownerAmountInPaise / 100,
-  });
+  if (updateError || !updatedBooking) {
+    return;
+  }
 
-  // 1. Update booking status and payment status
-  await supabase.from('bookings').update({
-    status: 'completed',
-    payment_status:'fully_paid',
-    razorpay_payment_id: payment.id,
-    razorpay_order_id: payment.order_id,
-  }).eq('id', bookingId);
+  // Send email only one time
+  try {
+    if (booking.contact_email) {
+      await sendMail({
+        to: booking.contact_email,
+        subject: "Payment Successful - Booking Confirmed",
+        html: paymentSuccessEmail({
+          contactName: booking.contact_name,
+          eventName: booking.event_name,
+          amount: payment.amount,
+          razorpayPaymentId: payment.id,
+          razorpayOrderId: payment.order_id,
+        }),
+      });
 
-   // 2. Create invoice ONLY after payment.captured
-   try {
+    }
+  } catch (error: any) {
+    console.error("Payment success email failed:", error.message);
+  }
+
+  // Send commission email to venue owner
+  try {
+    if (venueOwner?.email) {
+      await sendMail({
+        to: venueOwner.email,
+        subject: "Commission Credited - Shifts Deal",
+        html: venueCommisionSuccessEmail({
+          ownerName: venueOwner.name,
+          eventName: booking.event_name,
+          amount: ownerAmountInPaise,
+          razorpayPaymentId: payment.id,
+          razorpayOrderId: payment.order_id,
+        }),
+      });
+    }
+  } catch (error: any) {
+    console.error("Owner commission email failed:", error.message);
+  }
+
+  // Create invoice only once
+  try {
     const invoice = await createRazorpayInvoice({
       bookingId,
       customerName: booking.contact_name,
@@ -267,30 +353,17 @@ async function handlePaymentCaptured(event: any) {
       })
       .eq("id", bookingId);
 
-    console.log("Invoice saved in Supabase:", {
-      bookingId,
-      invoice_id: invoice.id,
-      invoice_status: invoice.status,
-      invoice_url: invoice.short_url,
-    });
   } catch (error: any) {
     console.error("Invoice creation failed:", error.message);
   }
 
+  // Create payout only once
   try {
     const payoutResult = await createOwnerPayout({
       bookingId,
       amountInPaise: ownerAmountInPaise,
-      ownerName,
+      ownerName: venueOwner?.name || "Venue Owner",
       ownerUpiId,
-    });
-
-    console.log("Payout initiated successfully:", {
-      bookingId,
-      contact_id: payoutResult.contact.id,
-      fund_account_id: payoutResult.fundAccount.id,
-      payout_id: payoutResult.payout.id,
-      payout_status: payoutResult.payout.status,
     });
   } catch (error: any) {
     console.error("Payout creation failed:", error.message);
@@ -302,26 +375,38 @@ async function handlePaymentCaptured(event: any) {
 ---------------------------------- */
 
 async function handlePayoutStatusUpdate(event: any) {
-  const payout = event.payload.payout.entity;
+  const payout = event.payload?.payout?.entity;
+  if (!payout) return;
 
-  const bookingId = payout.notes?.booking_id || null;
+  const bookingId = payout.notes?.booking_id;
 
-  console.log("✅ RazorpayX payout status webhook:", {
-    webhook_event: event.event,
-    booking_id: bookingId,
-    payout_id: payout.id,
-    status: payout.status,
-    amount: payout.amount / 100,
-    utr: payout.utr || null,
-    mode: payout.mode,
-    fund_account_id: payout.fund_account_id,
-    failure_reason:
-      payout.failure_reason ||
-      payout.status_details?.description ||
-      payout.status_details?.reason ||
-      null,
-    created_at: payout.created_at,
-  });
+  if (event.event !== "payout.failed" && event.event !== "payout.reversed") {
+    return;
+  }
+
+  if (!bookingId) return;
+
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("contact_name, contact_email, event_name")
+    .eq("id", bookingId)
+    .single();
+
+  if (!booking?.contact_email) return;
+
+  try {
+    await sendMail({
+      to: booking.contact_email,
+      subject: "Payment Failed - Booking Confirmed",
+      html: paymentFailedEmail({
+        contactName: booking.contact_name,
+        eventName: booking.event_name,
+        amount: payout.amount,
+      }),
+    });
+  } catch (error: any) {
+    console.error("Payout failed email error:", error.message);
+  }
 }
 
 /* ----------------------------------
@@ -330,7 +415,6 @@ async function handlePayoutStatusUpdate(event: any) {
 
 export async function POST(req: Request) {
   try {
-    console.log("🔥 Webhook endpoint hit");
     const rawBody = await req.text();
 
     const razorpaySignature = req.headers.get("x-razorpay-signature");
@@ -421,12 +505,6 @@ async function createRazorpayInvoice(params: {
     console.error("Razorpay invoice creation failed:", data);
     throw new Error(data.error?.description || "Invoice creation failed");
   }
-
-  console.log("✅ Razorpay invoice created:", {
-    invoice_id: data.id,
-    status: data.status,
-    short_url: data.short_url,
-  });
 
   return data;
 }

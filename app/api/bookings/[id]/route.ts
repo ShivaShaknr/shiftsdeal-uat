@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { razorpay } from "@/lib/razorpay";
+import { sendMail } from '@/lib/communication/sendMail';
+import { venueApprovedEmail } from '@/lib/communication/emailTemplates/venueApprovedEmail';
+import { venueRejectedEmail } from '@/lib/communication/emailTemplates/venueRejectedEmail';
 
 // Use service role key for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
@@ -96,7 +98,7 @@ export async function PATCH(
       .from('bookings')
       .update(updateData)
       .eq('id', id)
-      .select()
+      .select('*, venues(name)')
       .single();
 
     if (error) {
@@ -105,6 +107,37 @@ export async function PATCH(
         { success: false, error: 'Failed to update booking' },
         { status: 500 }
       );
+    }
+
+    if (status === 'confirmed' && booking.contact_email) {
+      try {
+        await sendMail({
+          to: booking.contact_email,
+          subject: 'Booking Approved - Shifts Deal',
+          html: venueApprovedEmail({
+            contactName: booking.contact_name,
+            eventName: booking.event_name,
+            venueName: booking.venues?.name || 'Venue',
+          }),
+        });
+      } catch (emailError) {
+        console.error('Booking approval email failed:', emailError);
+      }
+    }
+    if (status === 'cancelled' && booking.contact_email) {
+      try {
+        await sendMail({
+          to: booking.contact_email,
+          subject: 'Booking Cancelled - Shifts Deal',
+          html: venueRejectedEmail({
+            contactName: booking.contact_name,
+            eventName: booking.event_name,
+            venueName: booking.venues?.name || 'Venue',
+          }),
+        });
+      } catch (emailError) {
+        console.error('Booking cancellation email failed:', emailError);
+      }
     }
 
     // let paymentLink: any = null;
