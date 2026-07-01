@@ -83,7 +83,7 @@ Phone:           ${booking.contactPhone || booking.contact_phone || 'N/A'}
                              PAYMENT SUMMARY
 --------------------------------------------------------------------------------
 Venue Charges:                                           ${formatCurrency(basePrice)}
-Platform Fee (5%):                                       ${formatCurrency(platformFee)}
+Platform Fee (${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) * 100).toFixed(2)}%):                                       ${formatCurrency(platformFee)}
                                                          ----------------
 Subtotal:                                                ${formatCurrency(subtotal)}
 GST (18%):                                               ${formatCurrency(gstAmount)}

@@ -151,16 +151,26 @@ async function createContact(
    4. CREATE FUND ACCOUNT USING UPI
 ---------------------------------- */
 
-async function createFundAccount(contactId: string, ownerUpiId: string) {
-  const fundAccount = await callRazorpayX("fund_accounts", {
+async function createFundAccount(contactId: string, booking: any) {
+  if (booking.payment_method === "bank") {
+    return callRazorpayX("fund_accounts", {
+      contact_id: contactId,
+      account_type: "bank_account",
+      bank_account: {
+        name: booking.bank_account_name,
+        ifsc: booking.bank_ifsc,
+        account_number: booking.bank_account_number,
+      },
+    });
+  }
+
+  return callRazorpayX("fund_accounts", {
     contact_id: contactId,
     account_type: "vpa",
     vpa: {
-      address: ownerUpiId,
+      address: booking.upi_id,
     },
   });
-
-  return fundAccount;
 }
 
 /* ----------------------------------
@@ -173,7 +183,8 @@ async function createPayout(params: {
   amountInPaise: number;
   shortBookingRef: string;
   ownerName: string;
-  ownerUpiId: string;
+  paymentMethod: string;
+  payoutDetail: string;
 }) {
   const idempotencyKey = `po_${params.bookingId
     .replaceAll("-", "")
@@ -186,7 +197,7 @@ async function createPayout(params: {
       fund_account_id: params.fundAccountId,
       amount: params.amountInPaise,
       currency: "INR",
-      mode: "UPI",
+      mode: params.paymentMethod === "bank" ? "IMPS" : "UPI",
       purpose: "payout",
       queue_if_low_balance: true,
       reference_id: params.shortBookingRef,
@@ -194,7 +205,7 @@ async function createPayout(params: {
       notes: {
         booking_id: params.bookingId,
         owner_name: params.ownerName,
-        owner_upi_id: params.ownerUpiId,
+        payout_detail: params.payoutDetail,
       },
     },
     idempotencyKey
@@ -208,30 +219,29 @@ async function createPayout(params: {
 ---------------------------------- */
 
 async function createOwnerPayout(params: {
-  bookingId: string;
+  booking: any;
   amountInPaise: number;
   ownerName: string;
-  ownerUpiId: string;
 }) {
-  const shortBookingRef = `bk_${params.bookingId
-    .replaceAll("-", "")
-    .slice(0, 30)}`;
+  const bookingId = params.booking.id;
+  const shortBookingRef = `bk_${bookingId.replaceAll("-", "").slice(0, 30)}`;
 
-  const contact = await createContact(
-    params.bookingId,
-    shortBookingRef,
-    params.ownerName
-  );
+  const contact = await createContact(bookingId, shortBookingRef, params.ownerName);
+  const fundAccount = await createFundAccount(contact.id, params.booking);
 
-  const fundAccount = await createFundAccount(contact.id, params.ownerUpiId);
+  const payoutDetail =
+    params.booking.payment_method === "bank"
+      ? `${params.booking.bank_account_number} (${params.booking.bank_ifsc})`
+      : params.booking.upi_id;
 
   const payout = await createPayout({
-    bookingId: params.bookingId,
+    bookingId,
     fundAccountId: fundAccount.id,
     amountInPaise: params.amountInPaise,
     shortBookingRef,
     ownerName: params.ownerName,
-    ownerUpiId: params.ownerUpiId,
+    paymentMethod: params.booking.payment_method || "upi",
+    payoutDetail,
   });
 
   return {
@@ -258,7 +268,9 @@ async function handlePaymentCaptured(event: any) {
     .from("bookings")
     .select(
       `id, date, start_time, end_time, event_name, event_type, attendees, status,
-      contact_name, contact_email, contact_phone, upi_id, payment_status, venue_id,
+      contact_name, contact_email, contact_phone, payment_method, upi_id,
+      bank_account_name, bank_name, bank_account_number, bank_ifsc,
+      payment_status, venue_id,
       base_price, platform_fee, subtotal, gst_amount, total_amount, deposit_amount, balance_amount,
       venues(name, address_street, address_city, address_state)`
     )
@@ -269,7 +281,11 @@ async function handlePaymentCaptured(event: any) {
     throw new Error("Booking not found");
   }
 
-  if (!booking.upi_id) {
+  if (booking.payment_method === 'bank') {
+    if (!booking.bank_account_number || !booking.bank_ifsc) {
+      throw new Error("Bank details missing on booking");
+    }
+  } else if (!booking.upi_id) {
     throw new Error("UPI ID missing on booking");
   }
 
@@ -278,7 +294,6 @@ async function handlePaymentCaptured(event: any) {
     ? [venue.address_street, venue.address_city, venue.address_state].filter(Boolean).join(", ")
     : "";
 
-  const ownerUpiId = booking.upi_id;
 
   const totalAmountInPaise = payment.amount;
   const ownerAmountInPaise = Math.round(Number(booking.base_price) * 100);
@@ -444,11 +459,10 @@ async function handlePaymentCaptured(event: any) {
 
   // Create payout only once
   try {
-    const payoutResult = await createOwnerPayout({
-      bookingId,
+    await createOwnerPayout({
+      booking,
       amountInPaise: ownerAmountInPaise,
-      ownerName: venueOwner?.name || "Venue Owner",
-      ownerUpiId,
+      ownerName: venueOwner?.name || booking.contact_name,
     });
   } catch (error: any) {
     console.error("Payout creation failed:", error.message);

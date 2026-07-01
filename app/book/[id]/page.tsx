@@ -68,7 +68,12 @@ export default function BookingPage() {
     specialRequirements: '',
 
     // Bank
+    paymentMethod: 'upi' as 'upi' | 'bank',
     upiId: '',
+    bankAccountName: '',
+    bankName: '',
+    bankAccountNumber: '',
+    bankIfsc: '',
 
     // Contract
     contractAccepted: false,
@@ -174,7 +179,7 @@ export default function BookingPage() {
   // Calculate full pricing with GST and platform fee
   const calculateFullPricing = () => {
     const basePrice = calculatePrice();
-    const platformFee = Math.round(basePrice * 0.05); // 5% platform fee
+    const platformFee = Math.round(basePrice * (Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE))); // 5% platform fee
     const subtotal = basePrice + platformFee;
     const gst = Math.round(subtotal * 0.18); // 18% GST
     const totalAmount = subtotal + gst;
@@ -461,13 +466,20 @@ export default function BookingPage() {
       }
       setCurrentStep('bank');
     } else if (currentStep === 'bank') {
-      if (!formData.upiId.trim()) {
-        alert('Please enter your UPI ID');
-        return;
-      }
-      if (!isValidUpiId(formData.upiId)) {
-        alert('Please enter a valid UPI ID (e.g. yourname@paytm)');
-        return;
+      if (formData.paymentMethod === 'upi') {
+        if (!formData.upiId.trim()) {
+          alert('Please enter your UPI ID');
+          return;
+        }
+        if (!isValidUpiId(formData.upiId)) {
+          alert('Please enter a valid UPI ID (e.g. yourname@paytm)');
+          return;
+        }
+      } else {
+        if (!formData.bankAccountName.trim() || !formData.bankName.trim() || !formData.bankAccountNumber.trim() || !formData.bankIfsc.trim()) {
+          alert('Please fill all bank details');
+          return;
+        }
       }
       setCurrentStep('contract');
     } else if (currentStep === 'contract') {
@@ -550,7 +562,12 @@ export default function BookingPage() {
         contact_name: formData.contactName,
         contact_email: formData.contactEmail,
         contact_phone: formData.contactPhone,
-        upi_id: formData.upiId.trim(),
+        payment_method: formData.paymentMethod,
+        upi_id: formData.paymentMethod === 'upi' ? formData.upiId.trim() : null,
+        bank_account_name: formData.paymentMethod === 'bank' ? formData.bankAccountName.trim() : null,
+        bank_name: formData.paymentMethod === 'bank' ? formData.bankName.trim() : null,
+        bank_account_number: formData.paymentMethod === 'bank' ? formData.bankAccountNumber.trim() : null,
+        bank_ifsc: formData.paymentMethod === 'bank' ? formData.bankIfsc.trim().toUpperCase() : null,
         special_requirements: formData.specialRequirements,
         kyc_document_type: formData.kycDocumentType,
         kyc_document_url: kycDocumentUrl || 'pending',
@@ -1019,21 +1036,79 @@ export default function BookingPage() {
                     className="space-y-6"
                   >
                     <div>
-                      <h2 className="text-xl font-semibold text-foreground mb-2">Bank Details</h2>
-                      <p className="text-foreground-muted">
-                        Enter your UPI ID for payment processing.
+                      <h2 className="text-xl font-semibold text-foreground mb-2">Payment Details</h2>
+                      <p className="text-foreground-muted mb-4">
+                        Choose how you want to receive payments.
                       </p>
-                      <p className="text-[10px] text-foreground-muted">
-                        <span className="font-bold">Note:</span> We will use this UPI ID for payment processing.
-                      </p>
+
+                      <div className="flex rounded-xl border border-border p-1 mb-6">
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, paymentMethod: 'upi' }))}
+                          className={cn(
+                            'flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                            formData.paymentMethod === 'upi'
+                              ? 'bg-primary text-background'
+                              : 'text-foreground-muted hover:text-foreground'
+                          )}
+                        >
+                          UPI
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, paymentMethod: 'bank' }))}
+                          className={cn(
+                            'flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                            formData.paymentMethod === 'bank'
+                              ? 'bg-primary text-background'
+                              : 'text-foreground-muted hover:text-foreground'
+                          )}
+                        >
+                          Bank Account
+                        </button>
+                      </div>
                     </div>
-                    <Input
-                      label="UPI ID"
-                      placeholder="yourname@paytm"
-                      value={formData.upiId}
-                      onChange={(e) => handleInputChange('upiId', e.target.value)}
-                      required
-                    />
+
+                    {formData.paymentMethod === 'upi' ? (
+                      <Input
+                        label="UPI ID"
+                        placeholder="yourname@paytm"
+                        value={formData.upiId}
+                        onChange={(e) => handleInputChange('upiId', e.target.value)}
+                        required
+                      />
+                    ) : (
+                      <div className="space-y-4">
+                        <Input
+                          label="Account Holder Name"
+                          placeholder="Name as per bank account"
+                          value={formData.bankAccountName}
+                          onChange={(e) => handleInputChange('bankAccountName', e.target.value)}
+                          required
+                        />
+                        <Input
+                          label="Bank Name"
+                          placeholder="e.g. HDFC Bank"
+                          value={formData.bankName}
+                          onChange={(e) => handleInputChange('bankName', e.target.value)}
+                          required
+                        />
+                        <Input
+                          label="Account Number"
+                          placeholder="Enter account number"
+                          value={formData.bankAccountNumber}
+                          onChange={(e) => handleInputChange('bankAccountNumber', e.target.value)}
+                          required
+                        />
+                        <Input
+                          label="IFSC Code"
+                          placeholder="e.g. HDFC0001234"
+                          value={formData.bankIfsc}
+                          onChange={(e) => handleInputChange('bankIfsc', e.target.value.toUpperCase())}
+                          required
+                        />
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
@@ -1255,7 +1330,7 @@ export default function BookingPage() {
                   <span className="text-foreground">{formatCurrency(calculateFullPricing().basePrice)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-foreground-muted">Platform Fee (5%)</span>
+                  <span className="text-foreground-muted">Platform Fee (${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) * 100)}%)</span>
                   <span className="text-foreground">{formatCurrency(calculateFullPricing().platformFee)}</span>
                 </div>
                 <div className="flex justify-between text-sm">

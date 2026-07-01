@@ -110,7 +110,7 @@ Phone: ${receiptData.contactPhone}
                               PAYMENT BREAKDOWN
 --------------------------------------------------------------------------------
 Venue Charges                               ${formatCurrency(pricing.basePrice).padStart(15)}
-Platform Fee (5%)                           ${formatCurrency(pricing.platformFee).padStart(15)}
+Platform Fee (${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) * 100).toFixed(2)}%)                           ${formatCurrency(pricing.platformFee).padStart(15)}
                                             ---------------
 Subtotal                                    ${formatCurrency(pricing.subtotal).padStart(15)}
 GST (18%)                                   ${formatCurrency(pricing.gst).padStart(15)}

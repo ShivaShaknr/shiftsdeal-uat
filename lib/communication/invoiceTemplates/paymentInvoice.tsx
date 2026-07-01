@@ -314,7 +314,7 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
       amount: basePrice,
     },
     {
-      desc: "Platform Fee",
+      desc: `Platform Fee (${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) * 100).toFixed(2)}%)`,
       qty: "1",
       rate: platformFee,
       amount: platformFee,
@@ -429,7 +429,7 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     style: "bold",
     color: success,
   });
-  
+
   const footerY = pageHeight - 20;
 
   line(contentX, footerY - 5, pageWidth - contentX, footerY - 5);
