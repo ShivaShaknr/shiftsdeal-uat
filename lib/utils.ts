@@ -13,6 +13,14 @@ export function formatCurrency(amount: number, currency: string = 'INR'): string
   }).format(amount);
 }
 
+export function formatRupeeNumber(amount: number): string {
+  return Number(amount).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+export function formatRupeeHtml(amount: number): string {
+  return `<span style="font-size:12px">₹</span> <span style="font-size:15px;font-weight:700">${formatRupeeNumber(amount)}</span>`;
+}
+
 export function formatDate(date: Date | string): string {
   return new Intl.DateTimeFormat('en-IN', {
     day: 'numeric',

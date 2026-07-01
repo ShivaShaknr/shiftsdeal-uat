@@ -14,15 +14,18 @@ export async function sendMail({
   to,
   subject,
   html,
+  attachments,
 }: {
   to: string;
   subject: string;
   html: string;
+  attachments?: { filename: string; content: Buffer }[];
 }) {
   await transporter.sendMail({
     from: process.env.EMAIL_FROM,
     to,
     subject,
     html,
+    attachments,
   });
 }

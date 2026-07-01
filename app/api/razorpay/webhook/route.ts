@@ -6,6 +6,10 @@ export const runtime = "nodejs";
 import { createClient } from "@supabase/supabase-js";
 import { sendMail } from "@/lib/communication/sendMail";
 import { paymentSuccessEmail } from "@/lib/communication/emailTemplates/paymentSuccessEmail";
+import {
+  paymentInvoicePdf,
+  type PaymentInvoiceData,
+} from "@/lib/communication/invoiceTemplates/paymentInvoice";
 import { paymentFailedEmail } from "@/lib/communication/emailTemplates/paymentFailedEmail";
 import { venueCommisionSuccessEmail } from "@/lib/communication/emailTemplates/venueCommisionSuccess";
 
@@ -252,7 +256,10 @@ async function handlePaymentCaptured(event: any) {
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
     .select(
-      "contact_name, contact_email, contact_phone, event_name, upi_id, payment_status, venue_id, base_price"
+      `id, date, start_time, end_time, event_name, event_type, attendees, status,
+      contact_name, contact_email, contact_phone, upi_id, payment_status, venue_id,
+      base_price, platform_fee, subtotal, gst_amount, total_amount, deposit_amount, balance_amount,
+      venues(name, address_street, address_city, address_state)`
     )
     .eq("id", bookingId)
     .single();
@@ -264,6 +271,11 @@ async function handlePaymentCaptured(event: any) {
   if (!booking.upi_id) {
     throw new Error("UPI ID missing on booking");
   }
+
+  const venue = Array.isArray(booking.venues) ? booking.venues[0] : booking.venues;
+  const venueAddress = venue
+    ? [venue.address_street, venue.address_city, venue.address_state].filter(Boolean).join(", ")
+    : "";
 
   const ownerUpiId = booking.upi_id;
 
@@ -297,6 +309,30 @@ async function handlePaymentCaptured(event: any) {
   // Send email only one time
   try {
     if (booking.contact_email) {
+      const invoiceData: PaymentInvoiceData = {
+        bookingId,
+        venueName: venue?.name,
+        venueAddress,
+        date: booking.date,
+        startTime: booking.start_time,
+        endTime: booking.end_time,
+        eventName: booking.event_name,
+        eventType: booking.event_type,
+        attendees: booking.attendees,
+        contactName: booking.contact_name,
+        contactEmail: booking.contact_email,
+        contactPhone: booking.contact_phone,
+        basePrice: booking.base_price,
+        platformFee: booking.platform_fee,
+        subtotal: booking.subtotal,
+        gstAmount: booking.gst_amount,
+        totalAmount: booking.total_amount,
+        depositAmount: booking.deposit_amount,
+        balanceAmount: booking.balance_amount,
+        status: "completed",
+        razorpayPaymentId: payment.id,
+      };
+
       await sendMail({
         to: booking.contact_email,
         subject: "Payment Successful - Booking Confirmed",
@@ -307,6 +343,12 @@ async function handlePaymentCaptured(event: any) {
           razorpayPaymentId: payment.id,
           razorpayOrderId: payment.order_id,
         }),
+        attachments: [
+          {
+            filename: `Invoice-${bookingId.substring(0, 8)}.pdf`,
+            content: paymentInvoicePdf(invoiceData),
+          },
+        ],
       });
 
     }
