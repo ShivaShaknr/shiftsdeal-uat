@@ -5,6 +5,7 @@ export const runtime = "nodejs";
 
 import { createClient } from "@supabase/supabase-js";
 import { sendMail } from "@/lib/communication/sendMail";
+import { sendWhatsAppTemplate, uploadWhatsAppMedia } from "@/lib/communication/whatsapp/whatsapp";
 import { paymentSuccessEmail } from "@/lib/communication/emailTemplates/paymentSuccessEmail";
 import {
   paymentInvoicePdf,
@@ -332,24 +333,66 @@ async function handlePaymentCaptured(event: any) {
         status: "completed",
         razorpayPaymentId: payment.id,
       };
+      const invoicePdfBuffer = paymentInvoicePdf(invoiceData);
+      const invoiceFileName = `Invoice-${bookingId.substring(0, 8)}.pdf`;
+      // Email
+      if (booking.contact_email) {
+        await sendMail({
+          to: booking.contact_email,
+          subject: "Payment Successful - Booking Confirmed",
+          html: paymentSuccessEmail({
+            contactName: booking.contact_name,
+            eventName: booking.event_name,
+            amount: payment.amount,
+            razorpayPaymentId: payment.id,
+            razorpayOrderId: payment.order_id,
+          }),
+          attachments: [
+            {
+              filename: invoiceFileName,
+              content: invoicePdfBuffer,
+            },
+          ],
+        });
+      }
 
-      await sendMail({
-        to: booking.contact_email,
-        subject: "Payment Successful - Booking Confirmed",
-        html: paymentSuccessEmail({
-          contactName: booking.contact_name,
-          eventName: booking.event_name,
-          amount: payment.amount,
-          razorpayPaymentId: payment.id,
-          razorpayOrderId: payment.order_id,
-        }),
-        attachments: [
-          {
-            filename: `Invoice-${bookingId.substring(0, 8)}.pdf`,
-            content: paymentInvoicePdf(invoiceData),
-          },
-        ],
-      });
+      // WhatsApp
+      if (booking.contact_phone) {
+        const invoiceMediaId = await uploadWhatsAppMedia({
+          buffer: invoicePdfBuffer,
+          filename: invoiceFileName,
+          mimeType: "application/pdf",
+        });
+
+        await sendWhatsAppTemplate({
+          to: booking.contact_phone,
+          templateName: "payment_success",
+          languageCode: "en",
+          components: [
+            {
+              type: "header",
+              parameters: [
+                {
+                  type: "document",
+                  document: {
+                    id: invoiceMediaId,
+                    filename: invoiceFileName,
+                  },
+                },
+              ],
+            },
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: booking.contact_name || "Customer" },
+                { type: "text", text: String(booking.total_amount || payment.amount / 100) },
+                { type: "text", text: bookingId },
+                { type: "text", text: payment.id },
+              ],
+            },
+          ],
+        });
+      }
 
     }
   } catch (error: any) {
@@ -430,7 +473,7 @@ async function handlePayoutStatusUpdate(event: any) {
 
   const { data: booking } = await supabase
     .from("bookings")
-    .select("contact_name, contact_email, event_name")
+    .select("contact_name, contact_email, event_name, contact_phone , total_amount")
     .eq("id", bookingId)
     .single();
 
@@ -445,6 +488,23 @@ async function handlePayoutStatusUpdate(event: any) {
         eventName: booking.event_name,
         amount: payout.amount,
       }),
+    });
+    await sendWhatsAppTemplate({
+      to: `91${booking.contact_phone}`,
+      templateName: "payment_failure",
+      languageCode: "en",
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: booking.contact_name || "Customer" }, 
+            { type: "text", text: String(booking.total_amount / 100 || 0) },   
+            { type: "text", text: booking.event_name || "Event" },              
+            { type: "text", text: bookingId },                           
+            { type: "text", text: "Payment Declined" },                  
+          ],
+        },
+      ],
     });
   } catch (error: any) {
     console.error("Payout failed email error:", error.message);
