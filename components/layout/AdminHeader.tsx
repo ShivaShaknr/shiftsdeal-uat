@@ -1,5 +1,6 @@
 'use client';
 
+import { CalendarIcon, FileTextIcon, HomeIcon, PlusIcon } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 
 const Icons = {
@@ -16,10 +17,10 @@ export default function AdminHeader({ onLogout }: AdminHeaderProps) {
   const pathname = usePathname();
 
   const navItems = [
-    { label: 'Bookings', path: '/sd-admin-x7k9', icon: '📅' },
-    { label: 'Venue Requests', path: '/sd-admin-x7k9/venues', icon: '📋' },
-    { label: 'Listed Venues', path: '/sd-admin-x7k9/listed-venues', icon: '🏠' },
-    { label: 'Add Venue', path: '/sd-admin-x7k9/add-venue', icon: '➕' },
+    { label: 'Bookings', path: '/sd-admin-x7k9', icon: <CalendarIcon /> },
+    { label: 'Venue Requests', path: '/sd-admin-x7k9/venues', icon: <FileTextIcon /> },
+    { label: 'Listed Venues', path: '/sd-admin-x7k9/listed-venues', icon: <HomeIcon /> },
+    { label: 'Add Venue', path: '/sd-admin-x7k9/add-venue', icon: <PlusIcon /> },
   ];
 
   return (
@@ -54,13 +55,13 @@ export default function AdminHeader({ onLogout }: AdminHeaderProps) {
               <button
                 key={item.path}
                 onClick={() => router.push(item.path)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
                   pathname === item.path
-                    ? 'bg-primary/20 text-primary border border-primary/30'
-                    : 'bg-background-light text-foreground-muted hover:bg-background-light/80 border border-border'
+                    ? 'bg-primary/20 text-primary border border-primary/30 cursor-default'
+                    : 'bg-background-light text-foreground-muted hover:bg-background-light/80 border border-border cursor-pointer'
                 }`}
               >
-                <span>{item.icon}</span>
+                <span className="inline-flex shrink-0 [&_svg]:w-4 [&_svg]:h-4">{item.icon}</span>
                 {item.label}
               </button>
             ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatCurrency, cn } from '@/lib/utils';
 import AdminHeader from '@/components/layout/AdminHeader';
@@ -20,6 +20,9 @@ const Icons = {
 
 interface Booking {
   id: string;
+  razorpay_payment_id: string;
+  platform_fee: number;
+  base_price: number;
   event_name: string;
   event_type: string;
   date: string;
@@ -53,14 +56,14 @@ interface Booking {
 }
 
 interface Stats {
-  total: number;
-  pending: number;
-  confirmed: number;
-  completed: number;
-  depositPaid: number;
-  awaitingPayment: number;
-  followUpNeeded: number;
-  expired: number;
+  total_venue_booked: number;
+  total_revenue: number;
+  commision_earned: number;
+  total_settlement: number;
+  pending_bookings: number;
+  confirmed_bookings: number;
+  completed_bookings: number;
+  successful_payments: number;
 }
 
 export default function AdminDashboard() {
@@ -140,9 +143,11 @@ export default function AdminDashboard() {
     try {
       const res = await fetch('/api/sd-admin/bookings');
       const data = await res.json();
+      console.log("fetchBookings data", data);
+      console.log("fetchBookings summary", data.summary);
       if (data.success) {
         setBookings(data.data);
-        setStats(data.stats);
+        setStats(data.summary);
       }
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
@@ -189,14 +194,20 @@ export default function AdminDashboard() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      pending: 'bg-yellow-500/20 text-yellow-400',
-      confirmed: 'bg-primary/20 text-primary',
-      cancelled: 'bg-red-500/20 text-red-400',
-      completed: 'bg-primary/20 text-primary',
+      pending:
+        'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20',
+      confirmed:
+        'bg-blue-500/10 text-blue-600 border border-blue-500/20',
+      cancelled:
+        'bg-red-500/10 text-red-600 border border-red-500/20',
+      completed:
+        'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20',
+      expired:
+        'bg-gray-500/10 text-gray-600 border border-gray-500/20',
     };
-    return colors[status] || 'bg-gray-500/20 text-gray-400';
+    return colors[status] || 'bg-muted text-muted-foreground border border-border';
   };
-
+  
   // Loading state
   if (isLoading) {
     return (
@@ -205,6 +216,88 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  //for transaction details
+  const PaymentStatusBadge = ({ status }: { status?: string | null }) => {
+    const config = {
+      fully_paid: {
+        label: 'Fully Paid',
+        className: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-400',
+        dot: 'bg-emerald-400',
+      },
+      deposit_paid: {
+        label: 'Deposit Paid',
+        className: 'border-sky-500/30 bg-sky-500/15 text-sky-400',
+        dot: 'bg-sky-400',
+      },
+      pending: {
+        label: 'Pending',
+        className: 'border-amber-500/30 bg-amber-500/15 text-amber-400',
+        dot: 'bg-amber-400',
+      },
+    } as const;
+
+    const item =
+      config[status as keyof typeof config] ?? config.pending;
+
+    return (
+      <span
+        className={cn(
+          'inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide',
+          item.className
+        )}
+      >
+        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', item.dot)} />
+        {item.label}
+      </span>
+    );
+  };
+
+  const InfoRow = ({
+    label,
+    value,
+  }: {
+    label: string;
+    value?: string | number | null | ReactNode;
+  }) => {
+    const isPrimitive = typeof value === 'string' || typeof value === 'number';
+
+    return (
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-xs font-medium text-muted-foreground capitalize">
+          {label}
+        </span>
+
+        {isPrimitive ? (
+          <span className="max-w-[220px] text-right text-[12px] font-normal text-foreground-muted break-words capitalize">
+            {value ?? '-'}
+          </span>
+        ) : (
+          <div className="text-right capitalize">{value ?? '-'}</div>
+        )}
+      </div>
+    );
+  };
+
+  const InfoBox = ({
+    label,
+    value,
+  }: {
+    label: string;
+    value?: string | number | null;
+  }) => {
+    return (
+      <div className="rounded-lg border border-border bg-background/40 px-4 py-3">
+        <div className="text-xs font-medium text-muted-foreground">
+          {label}
+        </div>
+  
+        <div className="mt-1 break-all text-[10px] font-semibold text-foreground">
+          {value || '-'}
+        </div>
+      </div>
+    );
+  };
 
   // Login form
   if (!isAuthenticated) {
@@ -269,7 +362,7 @@ export default function AdminDashboard() {
           <button
             onClick={fetchBookings}
             disabled={isRefreshing}
-            className="flex items-center gap-2 px-3 py-2 bg-background-light border border-border rounded-lg hover:border-border-hover text-sm"
+            className="flex items-center gap-2 px-3 py-2 bg-background-light border border-border rounded-lg hover:border-border-hover text-sm cursor-pointer"
           >
             <span className={isRefreshing ? 'animate-spin' : ''}><Icons.Refresh /></span>
             Refresh
@@ -279,18 +372,18 @@ export default function AdminDashboard() {
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
             {[
-              { label: 'Total', value: stats.total, color: 'text-foreground' },
-              { label: 'Pending', value: stats.pending, color: 'text-yellow-500' },
-              { label: 'Confirmed', value: stats.confirmed, color: 'text-primary' },
-              { label: 'Completed', value: stats.completed, color: 'text-purple-500' },
-              { label: 'Deposit Paid', value: stats.depositPaid, color: 'text-primary' },
-              { label: 'Awaiting Payment', value: stats.awaitingPayment, color: 'text-orange-500' },
-              { label: 'Follow-up Needed', value: stats.followUpNeeded, color: 'text-amber-500' },
-              { label: 'Expired (24h)', value: stats.expired, color: 'text-red-500' },
+              { label: 'Total venues booked', value: stats.total_venue_booked, color: 'text-foreground', currency: false },
+              { label: 'Total revenue', value: stats.total_revenue, color: 'text-foreground', currency: true },
+              { label: 'Commissions Earned', value: stats.commision_earned, color: 'text-foreground', currency: true },
+              { label: 'Total Settlements', value: stats.total_settlement, color: 'text-foreground', currency: true },
+              { label: 'Pending Bookings', value: stats.pending_bookings, color: 'text-foreground', currency: false },
+              { label: 'Confirmed Bookings', value: stats.confirmed_bookings, color: 'text-foreground', currency: false },
+              { label: 'Completed Bookings', value: stats.completed_bookings, color: 'text-foreground', currency: false },
+              { label: 'Expired Bookings', value: stats.successful_payments, color: 'text-foreground', currency: false },
             ].map(stat => (
-              <div key={stat.label} className="bg-background-card border border-border rounded-xl p-4">
-                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                <p className="text-xs text-foreground-muted">{stat.label}</p>
+              <div key={stat.label} className="bg-background-card border border-border rounded-xl p-4 flex flex-col gap-2">
+                <p className="text-[10px] text-foreground-muted">{stat.label}</p>
+                <p className={`text-2xl font-bold ${stat.color}`}>{stat.currency ? formatCurrency(stat.value) : stat.value}</p>
               </div>
             ))}
           </div>
@@ -304,15 +397,13 @@ export default function AdminDashboard() {
             { id: 'confirmed', label: 'Confirmed' },
             { id: 'completed', label: 'Completed' },
             { id: 'awaiting_payment', label: 'Awaiting Payment' },
-            { id: 'deposit_paid', label: 'Deposit Paid' },
-            { id: 'follow_up_needed', label: 'Need Follow-up' },
-            { id: 'expired', label: '⚠️ Expired' },
+            { id: 'expired', label: 'Expired' },
           ].map(f => (
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
               className={cn(
-                'px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+                'px-4 py-2 rounded-lg text-[12px] font-medium whitespace-nowrap transition-colors cursor-pointer',
                 filter === f.id
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-background-light text-foreground-muted hover:text-foreground'
@@ -329,20 +420,22 @@ export default function AdminDashboard() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-background-light">
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground-muted uppercase">Booking</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground-muted uppercase">Venue</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground-muted uppercase">Owner</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground-muted uppercase">Renter</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground-muted uppercase">Amount</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground-muted uppercase">Status</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-medium text-foreground-muted uppercase">Booking</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-medium text-foreground-muted uppercase">Venue</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-medium text-foreground-muted uppercase">Owner</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-medium text-foreground-muted uppercase">Renter</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-medium text-foreground-muted uppercase">Amount</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-medium text-foreground-muted uppercase">Status</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground-muted uppercase">Payment</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground-muted uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredBookings.map(booking => (
-                  <tr key={booking.id} className={cn(
-                    "border-b border-border/50 hover:bg-background-light",
+                  <tr key={booking.id}
+                   onClick={() => setSelectedBooking(booking)}
+                   className={cn(
+                    "border-b border-border/50 hover:bg-background-light cursor-pointer",
                     booking.deposit_expired && "bg-red-500/5"
                   )}>
                     <td className="py-3 px-4">
@@ -369,33 +462,25 @@ export default function AdminDashboard() {
                     </td>
                     <td className="py-3 px-4">
                       <p className="text-sm font-medium text-primary">{formatCurrency(booking.total_amount)}</p>
-                      <p className="text-xs text-foreground-muted">Dep: {formatCurrency(booking.deposit_amount)}</p>
+                      {/* <p className="text-xs text-foreground-muted">Dep: {formatCurrency(booking.deposit_amount)}</p> */}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(booking.status)}`}>
+                    <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize ${getStatusBadge(
+                          booking.status
+                        )}`}
+                      >
                         {booking.status}
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex flex-col gap-1">
-                        <span className={cn(
-                          'px-2 py-0.5 rounded text-xs',
-                          booking.deposit_paid ? 'bg-primary/20 text-primary' : 'bg-gray-500/20 text-gray-400'
-                        )}>
-                          {booking.deposit_paid ? '✓ Deposit Paid' : '○ Deposit Pending'}
-                        </span>
-                        {booking.follow_up_sent && (
-                          <span className="px-2 py-0.5 rounded text-xs bg-primary/20 text-primary">
-                            ✓ Follow-up Sent
-                          </span>
-                        )}
-                      </div>
+                      <PaymentStatusBadge status={booking.payment_status} />
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setSelectedBooking(booking)}
-                          className="p-2 bg-background-light border border-border rounded-lg hover:border-primary text-foreground-muted hover:text-primary"
+                          className="p-2 bg-background-light border border-border rounded-lg hover:border-primary text-foreground-muted hover:text-primary cursor-pointer"
                           title="View Details"
                         >
                           <Icons.Eye />
@@ -428,7 +513,7 @@ export default function AdminDashboard() {
             </table>
           </div>
           {filteredBookings.length === 0 && (
-            <div className="py-12 text-center text-foreground-muted">
+            <div className="py-12 text-center text-foreground-muted text-[12px]">
               No bookings found
             </div>
           )}
@@ -443,7 +528,7 @@ export default function AdminDashboard() {
               <h2 className="text-lg font-bold text-foreground">Booking Details</h2>
               <button
                 onClick={() => setSelectedBooking(null)}
-                className="p-2 hover:bg-background-light rounded-lg text-foreground"
+                className="p-2 hover:bg-background-light rounded-lg text-foreground cursor-pointer"
               >
                 <Icons.X />
               </button>
@@ -452,35 +537,35 @@ export default function AdminDashboard() {
               {/* Event Info */}
               <div>
                 <h3 className="text-sm font-medium text-foreground-muted mb-2">Event</h3>
-                <p className="text-lg font-semibold text-foreground">{selectedBooking.event_name}</p>
-                <p className="text-sm text-foreground-muted">{selectedBooking.event_type} • {selectedBooking.date}</p>
-                <p className="text-sm text-foreground-muted">{selectedBooking.start_time} - {selectedBooking.end_time}</p>
+                <p className="text-[16px] font-semibold text-foreground">{selectedBooking.event_name}</p>
+                <p className="text-[12px] font-semibold text-foreground-muted">{selectedBooking.event_type} • {selectedBooking.date}</p>
+                <p className="text-[10px] font-semibold text-foreground-muted">{selectedBooking.start_time} - {selectedBooking.end_time}</p>
               </div>
 
               {/* Venue Info */}
               <div>
                 <h3 className="text-sm font-medium text-foreground-muted mb-2">Venue</h3>
-                <p className="font-medium text-foreground">{selectedBooking.venues?.name}</p>
-                <p className="text-sm text-foreground-muted">{selectedBooking.venues?.address_city}, {selectedBooking.venues?.address_state}</p>
+                <p className="text-[14px] font-semibold text-foreground">{selectedBooking.venues?.name}</p>
+                <p className="text-[12px] font-normal text-foreground-muted capitalize">{selectedBooking.venues?.address_city}, {selectedBooking.venues?.address_state}</p>
               </div>
 
               {/* Owner & Renter */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-foreground-muted mb-2">Owner</h3>
-                  <p className="font-medium text-foreground">{selectedBooking.owner?.name || 'N/A'}</p>
-                  <p className="text-sm text-foreground-muted">{selectedBooking.owner?.email || '-'}</p>
+                  <p className="text-[14px] font-semibold text-foreground">{selectedBooking.owner?.name || 'N/A'}</p>
+                  <p className="text-[12px] font-normal text-foreground-muted">{selectedBooking.owner?.email || '-'}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-foreground-muted mb-2">Renter</h3>
-                  <p className="font-medium text-foreground">{selectedBooking.contact_name}</p>
-                  <p className="text-sm text-foreground-muted">{selectedBooking.contact_email}</p>
-                  <p className="text-sm text-foreground-muted">{selectedBooking.contact_phone}</p>
+                  <p className="text-[14px] font-semibold text-foreground">{selectedBooking.contact_name}</p>
+                  <p className="text-[12px] font-normal text-foreground-muted">{selectedBooking.contact_email}</p>
+                  <p className="text-[10px] font-semibold text-foreground">{selectedBooking.contact_phone}</p>
                 </div>
               </div>
 
               {/* Payment Info */}
-              <div>
+              {/* <div>
                 <h3 className="text-sm font-medium text-foreground-muted mb-2">Payment</h3>
                 <div className="bg-background-light rounded-lg p-4 space-y-2">
                   <div className="flex justify-between">
@@ -496,13 +581,12 @@ export default function AdminDashboard() {
                     <span className="text-foreground">{formatCurrency(selectedBooking.balance_amount)}</span>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Status Controls */}
-              <div>
+              {/* <div>
                 <h3 className="text-sm font-medium text-foreground-muted mb-3">Status Management</h3>
                 <div className="space-y-3">
-                  {/* Deposit Paid Toggle */}
                   <div className="flex items-center justify-between bg-background-light rounded-lg p-3">
                     <div>
                       <p className="font-medium text-foreground">Deposit Paid</p>
@@ -526,7 +610,6 @@ export default function AdminDashboard() {
                     </button>
                   </div>
 
-                  {/* Balance Paid Toggle */}
                   <div className="flex items-center justify-between bg-background-light rounded-lg p-3">
                     <div>
                       <p className="font-medium text-foreground">Balance Paid</p>
@@ -550,7 +633,6 @@ export default function AdminDashboard() {
                     </button>
                   </div>
 
-                  {/* Follow-up Sent Toggle */}
                   <div className="flex items-center justify-between bg-background-light rounded-lg p-3">
                     <div>
                       <p className="font-medium text-foreground">Follow-up Sent</p>
@@ -574,10 +656,10 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Admin Notes */}
-              <div>
+              {/* <div>
                 <h3 className="text-sm font-medium text-foreground-muted mb-2">Admin Notes</h3>
                 <textarea
                   defaultValue={selectedBooking.admin_notes || ''}
@@ -589,9 +671,69 @@ export default function AdminDashboard() {
                     }
                   }}
                 />
+              </div> */}
+
+          <div className="rounded-xl border border-border bg-card">
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-sm font-semibold text-foreground">
+                Transaction Details
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Payment and settlement information
+              </p>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <InfoBox
+                  label="Transaction ID"
+                  value={selectedBooking.razorpay_payment_id || '-'}
+                />
+                <InfoBox
+                  label="Booking ID"
+                  value={selectedBooking.id || '-'}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2">
+              <div className="space-y-4 border-b border-border p-5 md:border-b-0 md:border-r">
+                <InfoRow
+                  label="Customer Name"
+                  value={selectedBooking.contact_name || '-'}
+                />
+                <InfoRow
+                  label="Venue Name"
+                  value={selectedBooking.venues?.name || '-'}
+                />
+                <InfoRow
+                  label="Payment Gateway"
+                  value="Razorpay"
+                />
+                <InfoRow
+                  label="Payment Status"
+                  value={<PaymentStatusBadge status={selectedBooking.payment_status} />}
+                />
               </div>
 
-              {/* Cancel Expired Booking */}
+              <div className="space-y-4 p-5">
+                <InfoRow
+                  label="Total Amount"
+                  value={`₹${selectedBooking.total_amount || 0}`}
+                />
+                <InfoRow
+                  label="Commission Amount"
+                  value={`₹${selectedBooking.platform_fee || 0}`}
+                />
+                <InfoRow
+                  label="Settlement Amount"
+                  value={`₹${selectedBooking.base_price || 0}`}
+                />
+                <InfoRow
+                  label="Settlement Status"
+                  value={selectedBooking.status || '-'}
+                />
+              </div>
+            </div>
+          </div>
               {selectedBooking.deposit_expired && selectedBooking.status !== 'cancelled' && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
                   <div className="flex items-center justify-between">

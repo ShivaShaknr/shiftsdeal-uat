@@ -62,6 +62,8 @@ export async function GET(request: NextRequest) {
       .select('id, email, name, role')
       .in('id', allUserIds);
 
+    console.log("fetchBookings users data", users);
+
     const usersMap = new Map(users?.map(u => [u.id, u]) || []);
 
     // Helper to check if deposit is expired (24 hours since confirmation)
@@ -80,23 +82,42 @@ export async function GET(request: NextRequest) {
       renter: usersMap.get(booking.renter_id) || null,
       deposit_expired: isDepositExpired(booking),
     }));
+    console.log("fetchBookings enrichedBookings data", bookings);
+    let totalRevenue = 0;
+    let commisionEarned = 0;
+    let totalSettlement = 0;
+    let pending = 0;
+    let confirmed = 0;
+    let completed = 0;
+    let successfulPayments = 0;
+    let total_venue_booked = bookings?.length || 0;
+    
+    for(let i = 0 ; i < bookings?.length; i++) {
+      const booking = bookings[i];
+      if(booking.payment_status === 'fully_paid') {successfulPayments++;}
+      if(booking.status === 'pending') {pending++;}
+      if(booking.status === 'confirmed') {confirmed++;}
+      if(booking.status === 'completed') {completed++;}
+      if(booking.total_amount > 0 && booking.payment_status === 'fully_paid') {totalRevenue += booking.total_amount;}
+      if(booking.total_amount > 0 && booking.status === 'completed' && booking.payment_status === 'fully_paid') {commisionEarned += booking.platform_fee;}
+      if(booking.total_amount > 0 && booking.status === 'completed' && booking.payment_status === 'fully_paid') {totalSettlement += booking.base_price;}
+    }
 
-    // Get stats
-    const stats = {
-      total: bookings?.length || 0,
-      pending: bookings?.filter(b => b.status === 'pending').length || 0,
-      confirmed: bookings?.filter(b => b.status === 'confirmed').length || 0,
-      completed: bookings?.filter(b => b.status === 'completed').length || 0,
-      depositPaid: bookings?.filter(b => b.deposit_paid).length || 0,
-      awaitingPayment: bookings?.filter(b => b.status === 'confirmed' && !b.deposit_paid).length || 0,
-      followUpNeeded: bookings?.filter(b => b.status === 'confirmed' && !b.deposit_paid && !b.follow_up_sent).length || 0,
-      expired: enrichedBookings?.filter(b => b.deposit_expired).length || 0,
-    };
+    const summary = {
+      total_venue_booked: total_venue_booked,
+      total_revenue: totalRevenue,
+      commision_earned: commisionEarned,
+      total_settlement: totalSettlement,
+      pending_bookings: pending,
+      confirmed_bookings: confirmed,
+      completed_bookings: completed,
+      successful_payments: successfulPayments,
+    }
 
     return NextResponse.json({
       success: true,
       data: enrichedBookings,
-      stats,
+      summary: summary,
     });
   } catch (error: any) {
     console.error('Admin bookings error:', error);

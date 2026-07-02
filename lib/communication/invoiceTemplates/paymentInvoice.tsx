@@ -205,10 +205,19 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     color: success,
   });
 
+  const formatTiming = () => {
+    if (!data.startTime || !data.endTime) return "-";
+    return `${data.startTime} - ${data.endTime}`;
+  };
+
+  const commissionLabel = process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE
+    ? `${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) * 100).toFixed(0)}%`
+    : "5%";
+
   // Bill to / Booking details boxes
   const boxY = 78;
   const boxW = (contentW - 8) / 2;
-  const boxH = 44;
+  const boxH = 50;
 
   rect(contentX, boxY, boxW, boxH);
   rect(contentX + boxW + 8, boxY, boxW, boxH);
@@ -255,29 +264,38 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     maxWidth: boxW - 10,
   });
 
-  text(`Event: ${safeText(data.eventName)}`, bx, boxY + 31, {
+  if (data.venueAddress) {
+    text(safeText(data.venueAddress), bx, boxY + 30, {
+      size: 8,
+      color: muted,
+      maxWidth: boxW - 10,
+    });
+  }
+
+  text(`Event: ${safeText(data.eventName)}`, bx, boxY + 37, {
     size: 9,
     maxWidth: boxW - 10,
   });
 
-  text(`Date: ${bookingDate}`, bx, boxY + 38, {
+  text(`Date: ${bookingDate}  |  ${formatTiming()}`, bx, boxY + 44, {
     size: 9,
+    maxWidth: boxW - 10,
   });
 
   // Items table
-  const tableY = 136;
-  const rowH = 10;
-  const descW = 76;
-  const qtyW = 18;
+  const tableY = 142;
+  const headerH = 10;
+  const descW = 72;
+  const timingW = 30;
   const rateW = 34;
-  const amountW = contentW - descW - qtyW - rateW;
+  const amountW = contentW - descW - timingW - rateW;
 
   const descX = contentX;
-  const qtyX = descX + descW;
-  const rateX = qtyX + qtyW;
+  const timingX = descX + descW;
+  const rateX = timingX + timingW;
   const amountX = rateX + rateW;
 
-  rect(contentX, tableY, contentW, rowH, black, black);
+  rect(contentX, tableY, contentW, headerH, black, black);
 
   text("DESCRIPTION", descX + 4, tableY + 6.7, {
     size: 8,
@@ -285,7 +303,7 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     color: "#ffffff",
   });
 
-  text("QTY", qtyX + qtyW / 2, tableY + 6.7, {
+  text("TIMING", timingX + timingW / 2, tableY + 6.7, {
     size: 8,
     style: "bold",
     color: "#ffffff",
@@ -306,36 +324,51 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     align: "right",
   });
 
+  const venueRowH = data.venueAddress ? 14 : 10;
+  const feeRowH = 10;
+
   const rows = [
     {
-      desc: `Venue Booking - ${safeText(data.venueName || data.eventName)}`,
-      qty: "1",
+      title: `Venue Booking - ${safeText(data.venueName)}`,
+      address: data.venueAddress ? safeText(data.venueAddress) : null,
+      timing: formatTiming(),
       rate: basePrice,
       amount: basePrice,
+      rowH: venueRowH,
     },
     {
-      desc: `Platform Fee (${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) * 100).toFixed(2)}%)`,
-      qty: "1",
+      title: `Platform Fee (${commissionLabel})`,
+      address: null,
+      timing: "-",
       rate: platformFee,
       amount: platformFee,
+      rowH: feeRowH,
     },
   ];
 
-  let y = tableY + rowH;
+  let y = tableY + headerH;
 
   rows.forEach((item, index) => {
-    rect(contentX, y, contentW, rowH, index % 2 === 0 ? "#ffffff" : lightBg);
+    rect(contentX, y, contentW, item.rowH, index % 2 === 0 ? "#ffffff" : lightBg);
 
-    line(qtyX, y, qtyX, y + rowH);
-    line(rateX, y, rateX, y + rowH);
-    line(amountX, y, amountX, y + rowH);
+    line(timingX, y, timingX, y + item.rowH);
+    line(rateX, y, rateX, y + item.rowH);
+    line(amountX, y, amountX, y + item.rowH);
 
-    text(item.desc, descX + 4, y + 6.7, {
+    text(item.title, descX + 4, y + (item.address ? 5 : 6.7), {
       size: 9,
       maxWidth: descW - 8,
     });
 
-    text(item.qty, qtyX + qtyW / 2, y + 6.7, {
+    if (item.address) {
+      text(item.address, descX + 4, y + 10.5, {
+        size: 8,
+        color: muted,
+        maxWidth: descW - 8,
+      });
+    }
+
+    text(item.timing, timingX + timingW / 2, y + 6.7, {
       size: 9,
       align: "center",
     });
@@ -351,12 +384,13 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
       style: "bold",
     });
 
-    y += rowH;
+    y += item.rowH;
   });
 
   // Table border
-  rect(contentX, tableY, contentW, rowH * 3);
-  line(qtyX, tableY, qtyX, y);
+  const tableH = headerH + venueRowH + feeRowH;
+  rect(contentX, tableY, contentW, tableH);
+  line(timingX, tableY, timingX, y);
   line(rateX, tableY, rateX, y);
   line(amountX, tableY, amountX, y);
 
