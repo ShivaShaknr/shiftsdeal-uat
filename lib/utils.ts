@@ -30,11 +30,19 @@ export function formatDate(date: Date | string): string {
 }
 
 export function formatTime(time: string): string {
+  if (!time) return '-';
   const [hours, minutes] = time.split(':');
-  const hour = parseInt(hours);
+  const hour = parseInt(hours, 10);
+  if (Number.isNaN(hour)) return time;
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes} ${ampm}`;
+  return `${hour12}:${(minutes || '00').slice(0, 2)} ${ampm}`;
+}
+
+export function formatTimeRange(start?: string | null, end?: string | null): string {
+  if (!start && !end) return '-';
+  if (start && end) return `${formatTime(start)} – ${formatTime(end)}`;
+  return formatTime(start || end || '');
 }
 
 export function generateId(): string {

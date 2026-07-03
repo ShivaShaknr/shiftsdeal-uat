@@ -22,6 +22,8 @@ const Icons = {
   X: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
   ExternalLink: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>,
   Edit: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+  ChevronDown: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>,
+  Filter: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>,
 };
 
 interface Venue {
@@ -337,32 +339,33 @@ export default function AdminVenuesListPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Page Title */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-foreground">Venue Management</h2>
-          <p className="text-sm text-foreground-muted">View, search, hide or delete venues</p>
-        </div>
-        
-        {/* Actions Bar */}
-        <div className="flex items-center justify-end gap-3 mb-6">
-          <button
-            onClick={() => router.push('/sd-admin-x7k9/add-venue')}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover"
-          >
-            <Icons.Building />
-            Add Venue
-          </button>
-          <button
-            onClick={fetchVenues}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 px-3 py-2 bg-background-light border border-border rounded-lg hover:border-border-hover text-sm"
-          >
-            <span className={isRefreshing ? 'animate-spin' : ''}><Icons.Refresh /></span>
-            Refresh
-          </button>
+        <div className="flex items-center justify-between mb-2">
+          <div className='flex flex-col'>
+            <h2 className="text-lg font-semibold text-foreground">Venue Management</h2>
+            <p className="text-sm text-foreground-muted">View, search, hide or delete venues</p>
+          </div>
+          {/* Actions Bar */}
+          <div className="flex items-center justify-end gap-3 mb-6">
+            <button
+              onClick={() => router.push('/sd-admin-x7k9/add-venue')}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover"
+            >
+              <Icons.Building />
+              Add Venue
+            </button>
+            <button
+              onClick={fetchVenues}
+              disabled={isRefreshing}
+              className="flex items-center gap-2 px-3 py-2 bg-background-light border border-border rounded-lg hover:border-border-hover text-sm"
+            >
+              <span className={isRefreshing ? 'animate-spin' : ''}><Icons.Refresh /></span>
+              Refresh
+            </button>
+          </div>
         </div>
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: 'Total Venues', value: stats.total, color: 'text-foreground' },
               { label: 'Available', value: stats.available, color: 'text-primary' },
@@ -378,40 +381,88 @@ export default function AdminVenuesListPage() {
         )}
 
         {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Icons.Search />
-            <input
-              type="text"
-              placeholder="Search venues by name, city, or state..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-background-light border border-border rounded-lg pl-10 pr-4 py-3 text-foreground focus:outline-none focus:border-primary"
-            />
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted">
-              <Icons.Search />
+        <div className="overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              {/* <span className="text-foreground-muted"><Icons.Filter /></span> */}
+              {/* <p className="text-sm font-semibold text-foreground">Search & Filters</p> */}
+            </div>
+            {/* {(searchQuery || statusFilter !== 'all' || cityFilter !== 'all') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('all');
+                  setCityFilter('all');
+                }}
+                className="text-xs font-medium text-foreground-muted transition-colors hover:text-primary"
+              >
+                Clear all
+              </button>
+            )} */}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 pb-6 md:grid-cols-[1fr_auto_auto] md:items-end">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
+                Search venues
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Name, city, or state..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background/50 py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-foreground-muted/60 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15"
+                />
+                <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted">
+                  <Icons.Search />
+                </div>
+              </div>
+            </div>
+
+            <div className="min-w-[170px]">
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
+                Status
+              </label>
+              <div className="relative">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full cursor-pointer appearance-none rounded-lg border border-border bg-background/50 py-2.5 pl-3 pr-9 text-sm text-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15"
+                >
+                  <option value="all">All Status</option>
+                  <option value="available">Available</option>
+                  <option value="hidden">Hidden</option>
+                  <option value="maintenance">Maintenance</option>
+                </select>
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted">
+                  <Icons.ChevronDown />
+                </div>
+              </div>
+            </div>
+
+            <div className="min-w-[170px]">
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
+                City
+              </label>
+              <div className="relative">
+                <select
+                  value={cityFilter}
+                  onChange={(e) => setCityFilter(e.target.value)}
+                  className="w-full cursor-pointer appearance-none rounded-lg border border-border bg-background/50 py-2.5 pl-3 pr-9 text-sm text-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15"
+                >
+                  <option value="all">All Cities</option>
+                  {cities.map(city => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted">
+                  <Icons.ChevronDown />
+                </div>
+              </div>
             </div>
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-background-light border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
-          >
-            <option value="all">All Status</option>
-            <option value="available">Available</option>
-            <option value="hidden">Hidden</option>
-            <option value="maintenance">Maintenance</option>
-          </select>
-          <select
-            value={cityFilter}
-            onChange={(e) => setCityFilter(e.target.value)}
-            className="bg-background-light border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
-          >
-            <option value="all">All Cities</option>
-            {cities.map(city => (
-              <option key={city} value={city}>{city}</option>
-            ))}
-          </select>
         </div>
 
         {/* Venues Grid */}
@@ -419,14 +470,14 @@ export default function AdminVenuesListPage() {
           {venues.map(venue => (
             <div
               key={venue.id}
-              className="bg-background-card border border-border rounded-xl overflow-hidden hover:border-border-hover transition-colors"
+              className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-background-card transition-colors hover:border-border-hover"
             >
               {/* Venue Image */}
-              <div className="relative h-40">
+              <div className="relative h-40 shrink-0">
                 <img
                   src={venue.images?.[0] || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400'}
                   alt={venue.name}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 />
                 <div className="absolute top-2 right-2">
                   <span className={cn('px-2 py-1 rounded-full text-xs font-medium', getStatusBadge(venue.availability))}>
@@ -436,27 +487,27 @@ export default function AdminVenuesListPage() {
               </div>
 
               {/* Venue Info */}
-              <div className="p-4">
-                <h3 className="font-semibold text-foreground mb-1 truncate">{venue.name}</h3>
-                <div className="flex items-center gap-1 text-foreground-muted text-sm mb-2">
+              <div className="flex flex-1 flex-col p-4">
+                <h3 className="mb-1 truncate font-semibold text-foreground">{venue.name}</h3>
+                <div className="mb-2 flex items-center gap-1 text-sm text-foreground-muted">
                   <Icons.MapPin />
                   <span className="truncate">{venue.address_city}, {venue.address_state}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm mb-3">
+                <div className="mb-3 flex items-center justify-between text-sm">
                   <span className="text-foreground-muted">Capacity: {venue.capacity_min}-{venue.capacity_max}</span>
-                  <span className="text-primary font-medium">{formatCurrency(venue.pricing_hourly)}/hr</span>
+                  <span className="font-medium text-primary">{formatCurrency(venue.pricing_hourly)}/hr</span>
                 </div>
-                {venue.owner && (
-                  <p className="text-xs text-foreground-muted truncate mb-3">
-                    Owner: {venue.owner.name} ({venue.owner.email})
-                  </p>
-                )}
+                <p className="mb-3 min-h-4 truncate text-xs text-foreground-muted">
+                  {venue.owner
+                    ? `Owner: ${venue.owner.name} (${venue.owner.email})`
+                    : '\u00A0'}
+                </p>
 
                 {/* Actions */}
-                <div className="flex gap-2">
+                <div className="mt-auto flex gap-2 border-t border-border/60 pt-3">
                   <button
                     onClick={() => setSelectedVenue(venue)}
-                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 text-sm"
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 text-sm cursor-pointer"
                   >
                     <Icons.Eye />
                     View
@@ -466,7 +517,7 @@ export default function AdminVenuesListPage() {
                       setEditingVenue(venue);
                       setShowEditModal(true);
                     }}
-                    className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 text-sm"
+                    className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 text-sm cursor-pointer"
                   >
                     <Icons.Edit />
                   </button>
@@ -474,7 +525,7 @@ export default function AdminVenuesListPage() {
                     <button
                       onClick={() => handleHideVenue(venue.id)}
                       disabled={processingId === venue.id}
-                      className="flex items-center justify-center gap-1 px-3 py-2 bg-yellow-500/10 text-yellow-400 rounded-lg hover:bg-yellow-500/20 text-sm disabled:opacity-50"
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-yellow-500/10 text-yellow-400 rounded-lg hover:bg-yellow-500/20 text-sm disabled:opacity-50 cursor-pointer"
                     >
                       <Icons.EyeOff />
                     </button>
@@ -482,7 +533,7 @@ export default function AdminVenuesListPage() {
                     <button
                       onClick={() => handleShowVenue(venue.id)}
                       disabled={processingId === venue.id}
-                      className="flex items-center justify-center gap-1 px-3 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 text-sm disabled:opacity-50"
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 text-sm disabled:opacity-50 cursor-pointer  "
                     >
                       <Icons.Eye />
                     </button>
@@ -490,7 +541,7 @@ export default function AdminVenuesListPage() {
                   <button
                     onClick={() => handleDeleteVenue(venue.id)}
                     disabled={processingId === venue.id}
-                    className="flex items-center justify-center gap-1 px-3 py-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 text-sm disabled:opacity-50"
+                    className="flex items-center justify-center gap-1 px-3 py-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 text-sm disabled:opacity-50 cursor-pointer"
                   >
                     <Icons.Trash />
                   </button>
@@ -501,8 +552,8 @@ export default function AdminVenuesListPage() {
         </div>
 
         {venues.length === 0 && !isRefreshing && (
-          <div className="text-center py-12">
-            <Icons.Building />
+          <div className="text-center py-12 text-[14px] font-medium text-foreground-muted">
+            {/* <Icons.Building /> */}
             <p className="text-foreground-muted mt-2">No venues found</p>
           </div>
         )}

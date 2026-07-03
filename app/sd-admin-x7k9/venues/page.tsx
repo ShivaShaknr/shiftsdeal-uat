@@ -255,13 +255,38 @@ export default function AdminVenueRequestsPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-500/20 text-yellow-400';
-      case 'approved': return 'bg-primary/20 text-primary';
-      case 'rejected': return 'bg-red-500/20 text-red-400';
-      default: return 'bg-gray-500/20 text-gray-400';
-    }
+  const RequestStatusBadge = ({ status }: { status: VenueRequest['status'] }) => {
+    const config = {
+      pending: {
+        label: 'Pending',
+        className: 'border-amber-500/30 bg-amber-500/15 text-amber-400',
+        dot: 'bg-amber-400',
+      },
+      approved: {
+        label: 'Approved',
+        className: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-400',
+        dot: 'bg-emerald-400',
+      },
+      rejected: {
+        label: 'Rejected',
+        className: 'border-red-500/30 bg-red-500/15 text-red-400',
+        dot: 'bg-red-400',
+      },
+    } as const;
+
+    const item = config[status] ?? config.pending;
+
+    return (
+      <span
+        className={cn(
+          'inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide',
+          item.className
+        )}
+      >
+        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', item.dot)} />
+        {item.label}
+      </span>
+    );
   };
 
   const filteredRequests = filter === 'all' 
@@ -335,19 +360,17 @@ export default function AdminVenueRequestsPage() {
     <div className="min-h-screen bg-background text-foreground">
       <AdminHeader onLogout={handleLogout} />
 
-      <div className="p-6">
+      <div className="p-6 max-w-7xl mx-auto">
         {/* Page Title */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-foreground">Venue Requests</h2>
-          <p className="text-sm text-foreground-muted">Review and approve new venue listings</p>
-        </div>
-        
-        {/* Actions Bar */}
-        <div className="flex items-center justify-end mb-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Venue Requests</h2>
+            <p className="text-sm text-foreground-muted">Review and approve new venue listings</p>
+          </div>
           <button
             onClick={() => fetchRequests()}
             disabled={isRefreshing}
-            className="flex items-center gap-2 px-3 py-2 bg-background-light border border-border rounded-lg hover:border-border-hover text-sm"
+            className="flex items-center gap-2 px-3 py-2 bg-background-light border border-border rounded-lg hover:border-border-hover text-sm cursor-pointer"
           >
             <span className={isRefreshing ? 'animate-spin' : ''}><Icons.Refresh /></span>
             Refresh
@@ -356,12 +379,13 @@ export default function AdminVenueRequestsPage() {
 
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-5 gap-4 mb-6">
             {[
               { label: 'Total', value: stats.total, color: 'text-foreground' },
               { label: 'Pending', value: stats.pending, color: 'text-yellow-500' },
               { label: 'Approved', value: stats.approved, color: 'text-primary' },
               { label: 'Rejected', value: stats.rejected, color: 'text-red-500' },
+              { label: 'Expired', value: 0, color: 'text-gray-500' },
             ].map(stat => (
               <div key={stat.label} className="bg-background-card border border-border rounded-xl p-4">
                 <p className="text-sm text-foreground-muted">{stat.label}</p>
@@ -375,15 +399,16 @@ export default function AdminVenueRequestsPage() {
         <div className="flex gap-2 mb-6">
           {[
             { id: 'all', label: 'All' },
-            { id: 'pending', label: '⏳ Pending' },
-            { id: 'approved', label: '✓ Approved' },
-            { id: 'rejected', label: '✗ Rejected' },
+            { id: 'pending', label: 'Pending' },
+            { id: 'approved', label: 'Approved' },
+            { id: 'rejected', label: 'Rejected' },
+            { id: 'expired', label: 'Expired' },
           ].map(f => (
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
               className={cn(
-                'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                'px-4 py-[6px] rounded-lg text-[12px] font-medium transition-colors cursor-pointer',
                 filter === f.id
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-background-light text-foreground-muted hover:text-foreground'
@@ -397,7 +422,7 @@ export default function AdminVenueRequestsPage() {
         {/* Requests List */}
         <div className="space-y-4">
           {filteredRequests.length === 0 ? (
-            <div className="bg-background-card border border-border rounded-xl p-12 text-center text-foreground-muted">
+            <div className="bg-background-card border border-border rounded-xl p-12 text-center text-foreground-muted text-[14px] font-medium">
               No venue requests found
             </div>
           ) : (
@@ -406,14 +431,14 @@ export default function AdminVenueRequestsPage() {
                 key={request.id}
                 className="bg-background-card border border-border rounded-xl overflow-hidden hover:border-border-hover transition-colors"
               >
-                <div className="flex">
+                <div className="flex h-fit">
                   {/* Image */}
-                  <div className="w-48 h-36 flex-shrink-0">
+                  <div className="flex-shrink-0">
                     {request.images.length > 0 ? (
                       <img
                         src={request.images[0]}
                         alt={request.name}
-                        className="w-full h-full object-cover"
+                        className="w-48 h-36 object-cover"
                       />
                     ) : (
                       <div className="w-full h-full bg-background-light flex items-center justify-center">
@@ -426,21 +451,19 @@ export default function AdminVenueRequestsPage() {
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-foreground">{request.name}</h3>
+                        <h3 className="text-[16px] font-semibold text-foreground">{request.name}</h3>
                         <div className="flex items-center gap-2 text-sm text-foreground-muted mt-1">
                           <Icons.MapPin />
-                          <span>{request.address_city}, {request.address_state}</span>
+                          <span className='text-[14px] font-medium capitalize text-foreground-muted'>{request.address_city}, {request.address_state}</span>
                         </div>
-                        <p className="text-sm text-foreground-muted mt-1">
+                        <p className="text-[14px] font-medium capitalize text-foreground-muted mt-1">
                           {request.type} • {request.capacity_min}-{request.capacity_max} guests
                         </p>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(request.status)}`}>
-                        {request.status}
-                      </span>
+                      <RequestStatusBadge status={request.status} />
                     </div>
 
-                    <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center justify-between">
                       <div className="text-sm">
                         <span className="text-foreground-muted">Owner:</span>
                         <span className="text-foreground ml-2">{request.owner?.name || 'Unknown'}</span>
@@ -455,7 +478,7 @@ export default function AdminVenueRequestsPage() {
                             setSelectedRequest(request);
                             setAdminNotes(request.admin_notes || '');
                           }}
-                          className="px-4 py-2 bg-background-light border border-border rounded-lg hover:border-primary text-sm"
+                          className="px-4 py-2 bg-background-light border border-border rounded-lg hover:border-primary text-sm cursor-pointer"
                         >
                           View Details
                         </button>
@@ -518,10 +541,10 @@ export default function AdminVenueRequestsPage() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-background-card border border-border rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-border flex items-center justify-between">
-              <h2 className="text-lg font-bold text-foreground">Venue Details</h2>
+              <h2 className="text-[16px] font-semibold text-foreground">Venue Details</h2>
               <button
                 onClick={() => setSelectedRequest(null)}
-                className="p-2 hover:bg-background-light rounded-lg"
+                className="p-2 hover:bg-background-light rounded-lg cursor-pointer"
               >
                 <Icons.X />
               </button>

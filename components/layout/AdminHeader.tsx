@@ -55,13 +55,13 @@ export default function AdminHeader({ onLogout }: AdminHeaderProps) {
               <button
                 key={item.path}
                 onClick={() => router.push(item.path)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                className={`flex items-center gap-2 px-3 py-[6px] rounded-lg text-[12px] font-medium transition-colors whitespace-nowrap cursor-pointer ${
                   pathname === item.path
                     ? 'bg-primary/20 text-primary border border-primary/30 cursor-default'
                     : 'bg-background-light text-foreground-muted hover:bg-background-light/80 border border-border cursor-pointer'
                 }`}
               >
-                <span className="inline-flex shrink-0 [&_svg]:w-4 [&_svg]:h-4">{item.icon}</span>
+                <span className="inline-flex shrink-0 [&_svg]:w-3 [&_svg]:h-3">{item.icon}</span>
                 {item.label}
               </button>
             ))}
