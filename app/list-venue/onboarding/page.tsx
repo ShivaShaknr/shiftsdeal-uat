@@ -332,7 +332,7 @@ export default function VenueOnboardingPage() {
       // Redirect to owner dashboard after 2 seconds
       setTimeout(() => {
         router.push('/owner/dashboard');
-      }, 2000);
+      }, 6000);
     } catch (err: any) {
       console.error('Submit error:', err);
       setError(err.message || 'Failed to submit venue request');
@@ -425,6 +425,7 @@ export default function VenueOnboardingPage() {
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-2">Request Submitted!</h2>
           <p className="text-foreground-muted mb-4">{successMessage}</p>
+          <p className='text-sm text-foreground-muted'>Make sure that you have added your <span className='font-bold'>bank details</span> in the Account Settings. If not please add them to start receiving payments.</p>
           <p className="text-sm text-foreground-muted">Redirecting to your dashboard...</p>
         </Card>
       </div>
@@ -1187,6 +1188,10 @@ export default function VenueOnboardingPage() {
                               Your venue listing will be reviewed by our team within 24-48 hours.
                               Once approved, it will appear in search results and start receiving
                               booking requests.
+                            </p>
+                            <br/>
+                            <p className="text-xs text-foreground-muted mt-1">
+                              Make sure that you have added your <span className="font-bold">bank details</span> in the Account Settings. If not please add them to start receiving payments.
                             </p>
                           </div>
                         </div>

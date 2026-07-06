@@ -103,9 +103,14 @@ export async function PATCH(
 
           const { data: ownerUser } = await supabase
             .from('users')
-            .select('id, role')
+            .select('id, role, upi_id, bank_account_number, bank_ifsc')
             .eq('email', ownerEmail)
             .maybeSingle();
+
+          const hasPayment = !!(
+            ownerUser?.upi_id?.trim() ||
+            (ownerUser?.bank_account_number?.trim() && ownerUser?.bank_ifsc?.trim())
+          );
 
           if (ownerUser?.id && ownerUser.role !== 'owner') {
             await supabase
@@ -143,6 +148,7 @@ export async function PATCH(
           }
 
           finalUpdateData.owner_id = ownerUser?.id ?? null;
+          finalUpdateData.availability = hasPayment ? 'available' : 'hidden';
           break;
         }
         case 'edit':

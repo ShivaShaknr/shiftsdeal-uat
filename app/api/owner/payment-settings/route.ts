@@ -66,6 +66,13 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
       }
 
+      if (upi_id?.trim()) {
+        await supabase
+          .from('venues')
+          .update({ availability: 'available', updated_at: new Date().toISOString() })
+          .eq('owner_id', userId);
+      }
+
       return NextResponse.json({ success: true, data });
     }
 
@@ -87,6 +94,13 @@ export async function PUT(request: NextRequest) {
 
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      }
+
+      if (bank_account_number?.trim() && bank_ifsc?.trim()) {
+        await supabase
+          .from('venues')
+          .update({ availability: 'available', updated_at: new Date().toISOString() })
+          .eq('owner_id', userId);
       }
 
       return NextResponse.json({ success: true, data });

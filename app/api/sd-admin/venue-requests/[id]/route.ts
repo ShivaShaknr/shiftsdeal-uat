@@ -104,6 +104,20 @@ export async function PATCH(
     }
 
     if (action === 'approve') {
+      let availability: 'available' | 'hidden' = 'hidden';
+      if (venueRequest.owner_id) {
+        const { data: owner } = await supabaseAdmin
+          .from('users')
+          .select('upi_id, bank_account_number, bank_ifsc')
+          .eq('id', venueRequest.owner_id)
+          .single();
+        const hasPayment = !!(
+          owner?.upi_id?.trim() ||
+          (owner?.bank_account_number?.trim() && owner?.bank_ifsc?.trim())
+        );
+        if (hasPayment) availability = 'available';
+      }
+
       // Create the venue in the venues table
       const newVenue = {
         owner_id: venueRequest.owner_id,
@@ -123,7 +137,7 @@ export async function PATCH(
         pricing_full_day: venueRequest.pricing_full_day,
         amenities: venueRequest.amenities,
         commission_percentage: venueRequest.commission_percentage ?? 0,
-        availability: 'available',
+        availability,
         rating: 4.8 + Math.random() * 0.2, // Random rating between 4.8 and 5.0 for new venues
         reviews_count: 0,
       };

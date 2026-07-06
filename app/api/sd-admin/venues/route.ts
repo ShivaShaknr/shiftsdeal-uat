@@ -133,9 +133,14 @@ export async function POST(request: NextRequest) {
 
     const { data: existingOwner } = await supabaseAdmin
       .from('users')
-      .select('id, role')
+      .select('id, role, upi_id, bank_account_number, bank_ifsc')
       .eq('email', normalizedOwnerEmail)
       .maybeSingle();
+
+    const hasPayment = !!(
+      existingOwner?.upi_id?.trim() ||
+      (existingOwner?.bank_account_number?.trim() && existingOwner?.bank_ifsc?.trim())
+    );
 
     if (existingOwner?.id && existingOwner.role !== 'owner') {
       await supabaseAdmin
@@ -164,7 +169,7 @@ export async function POST(request: NextRequest) {
         ? Number(body.commissionPercentage)
         : 0,
       amenities: Array.isArray(body.amenities) ? body.amenities : [],
-      availability: 'available',
+      availability: hasPayment ? 'available' : 'hidden',
     };
 
     const { data: createdVenue, error: venueError } = await supabaseAdmin
