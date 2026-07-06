@@ -160,6 +160,9 @@ export async function POST(request: NextRequest) {
       pricing_hourly: Number(body.pricingPerHour),
       pricing_half_day: body.pricingPerSlot ? Number(body.pricingPerSlot) : null,
       pricing_full_day: null,
+      commission_percentage: body.commissionPercentage
+        ? Number(body.commissionPercentage)
+        : 0,
       amenities: Array.isArray(body.amenities) ? body.amenities : [],
       availability: 'available',
     };

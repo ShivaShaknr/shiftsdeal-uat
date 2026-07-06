@@ -45,6 +45,7 @@ export default function AdminAddVenuePage() {
     pricingPerHour: '',
     pricingPerSlot: '',
     securityDeposit: '',
+    commissionPercentage: '',
     venueDescription: '',
     amenities: [] as string[],
     rulesAndRestrictions: '',
@@ -390,8 +391,21 @@ export default function AdminAddVenuePage() {
                 <input className="input" type="number" value={formData.pricingPerSlot} onChange={(e) => updateField('pricingPerSlot', e.target.value)} />
               </Field>
 
-              <Field label="Security Deposit">
+              {/* <Field label="Security Deposit">
                 <input className="input" type="number" value={formData.securityDeposit} onChange={(e) => updateField('securityDeposit', e.target.value)} />
+              </Field> */}
+
+              <Field label="Commission Percentage (%)">
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  placeholder="e.g. 10"
+                  value={formData.commissionPercentage}
+                  onChange={(e) => updateField('commissionPercentage', e.target.value)}
+                />
               </Field>
 
               <Field label="Venue Description *" className="md:col-span-2">

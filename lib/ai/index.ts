@@ -337,7 +337,6 @@ BOOKING DETAILS:
 - Time: ${bookingDetails.startTime} - ${bookingDetails.endTime}
 - Expected Attendees: ${bookingDetails.attendees}
 - Total Amount: ₹${bookingDetails.totalAmount}
-- Security Deposit: ₹${bookingDetails.depositAmount}
 - Risk Level: ${bookingDetails.riskLevel}
 
 Generate a formal, legally-sound contract with these sections:
