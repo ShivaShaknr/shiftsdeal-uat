@@ -81,7 +81,7 @@ export default function Navbar() {
             <motion.button
               onClick={toggleTheme}
               className={cn(
-                'p-2 rounded-xl border transition-colors',
+                'p-2 rounded-xl border transition-colors cursor-pointer',
                 theme === 'dark'
                   ? 'bg-black hover:bg-neutral-900 border-white/30 text-white'
                   : 'bg-white hover:bg-neutral-100 border-white text-black'
@@ -121,22 +121,32 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-3 p-2 rounded-xl hover:bg-background-card transition-colors"
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl border px-3 py-[6px] transition-colors cursor-pointer',
+                    theme === 'dark'
+                      ? 'border-transparent text-white hover:bg-white/10'
+                      : 'border-white bg-white text-black hover:bg-neutral-100'
+                  )}
                 >
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                  <div
+                    className={cn(
+                      'flex h-8 w-8 items-center justify-center overflow-hidden rounded-full',
+                      theme === 'dark' ? 'bg-white/10' : 'bg-black/10'
+                    )}
+                  >
                     {userAvatar ? (
                       <Image
                         src={userAvatar}
                         alt={userName}
                         width={32}
                         height={32}
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
-                      <User className="w-4 h-4 text-white" />
+                      <User className={cn('h-4 w-4', theme === 'dark' ? 'text-white' : 'text-black')} />
                     )}
                   </div>
-                  <span className="text-sm font-medium text-white">{userName.split(' ')[0]}</span>
+                  <span className="text-sm font-medium">{userName.split(' ')[0]}</span>
                 </button>
 
                 <AnimatePresence>
@@ -145,49 +155,102 @@ export default function Navbar() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 mt-2 w-56 bg-black border border-white/15 rounded-xl shadow-xl overflow-hidden"
+                      className={cn(
+                        'absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border shadow-xl',
+                        theme === 'dark'
+                          ? 'border-white/15 bg-black'
+                          : 'border-black/10 bg-white'
+                      )}
                     >
-                      <div className="p-4 border-b border-white/15">
-                        <p className="font-medium text-white">{userName}</p>
-                        <p className="text-sm text-white/65">{userEmail}</p>
-                        <span className="inline-block mt-2 text-xs px-2 py-0.5 bg-white/10 text-white rounded-full capitalize">
+                      <div
+                        className={cn(
+                          'border-b p-4',
+                          theme === 'dark' ? 'border-white/15' : 'border-black/10'
+                        )}
+                      >
+                        <p className={cn('font-medium', theme === 'dark' ? 'text-white' : 'text-black')}>
+                          {userName}
+                        </p>
+                        <p className={cn('text-sm', theme === 'dark' ? 'text-white/65' : 'text-black/60')}>
+                          {userEmail}
+                        </p>
+                        <span
+                          className={cn(
+                            'mt-2 inline-block rounded-full px-2 py-0.5 text-xs capitalize',
+                            theme === 'dark'
+                              ? 'bg-white/10 text-white'
+                              : 'bg-black/10 text-black'
+                          )}
+                        >
                           {role || 'renter'}
                         </span>
                       </div>
                       <div className="py-2">
                         {role === 'owner' && (
-                          <Link
-                            href="/owner/dashboard"
-                            onClick={() => setIsProfileOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                          >
-                            <LayoutDashboard className="w-4 h-4" />
-                            Owner Dashboard
-                          </Link>
+                          <>
+                            <Link
+                              href="/owner/dashboard"
+                              onClick={() => setIsProfileOpen(false)}
+                              className={cn(
+                                'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
+                                theme === 'dark'
+                                  ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                                  : 'text-black/70 hover:bg-black/5 hover:text-black'
+                              )}
+                            >
+                              <LayoutDashboard className="h-4 w-4" />
+                              Owner Dashboard
+                            </Link>
+                            <Link
+                              href="/owner-settings"
+                              onClick={() => setIsProfileOpen(false)}
+                              className={cn(
+                                'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
+                                theme === 'dark'
+                                  ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                                  : 'text-black/70 hover:bg-black/5 hover:text-black'
+                              )}
+                            >
+                              <Settings className="h-4 w-4" />
+                              Account Settings
+                            </Link>
+                          </>
                         )}
                         {role === 'admin' && (
                           <Link
                             href="/admin"
                             onClick={() => setIsProfileOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                            className={cn(
+                              'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
+                              theme === 'dark'
+                                ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                                : 'text-black/70 hover:bg-black/5 hover:text-black'
+                            )}
                           >
-                            <Settings className="w-4 h-4" />
+                            <Settings className="h-4 w-4" />
                             Admin Panel
                           </Link>
                         )}
-                        <Link
-                          href="/bookings"
-                          onClick={() => setIsProfileOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                        >
-                          <Building2 className="w-4 h-4" />
-                          My Bookings
-                        </Link>
+                        {role === 'renter' && (
+                          <Link
+                            href="/bookings"
+                            onClick={() => setIsProfileOpen(false)}
+                            className={cn(
+                              'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
+                              theme === 'dark'
+                                ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                                : 'text-black/70 hover:bg-black/5 hover:text-black'
+                            )}
+                          >
+                            <LayoutDashboard className="h-4 w-4" />
+                            My Bookings
+                          </Link>
+                        )}
                         <button
                           onClick={handleSignOut}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-error/10 transition-colors"
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-error transition-colors hover:bg-error/10"
                         >
-                          <LogOut className="w-4 h-4" />
+                          <LogOut className="h-4 w-4" />
                           Sign Out
                         </button>
                       </div>

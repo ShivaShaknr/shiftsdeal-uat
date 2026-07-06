@@ -48,14 +48,34 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Supabase query error:', error);
-      // Fallback to dummy data
       return getFallbackData(searchParams, page, limit);
     }
 
-    // Pagination
+    const bookings = dbBookings || [];
+    const venueIds = [...new Set(bookings.map((b) => b.venue_id).filter(Boolean))];
+
+    const { data: venues } = venueIds.length
+      ? await supabaseAdmin.from('venues').select('*').in('id', venueIds)
+      : { data: [] };
+
+    const ownerIds = [...new Set((venues || []).map((v) => v.owner_id).filter(Boolean))];
+
+    const { data: owners } = ownerIds.length
+      ? await supabaseAdmin.from('users').select('*').in('id', ownerIds)
+      : { data: [] };
+
+    const venueMap = new Map((venues || []).map((v) => [v.id, v]));
+    const ownerMap = new Map((owners || []).map((o) => [o.id, o]));
+
+    const enrichedBookings = bookings.map((booking) => {
+      const venue = venueMap.get(booking.venue_id) || null;
+      const owner = venue?.owner_id ? ownerMap.get(venue.owner_id) || null : null;
+      return { ...booking, venue, owner };
+    });
+
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
-    const paginatedBookings = (dbBookings || []).slice(startIndex, endIndex);
+    const paginatedBookings = enrichedBookings.slice(startIndex, endIndex);
 
     return NextResponse.json({
       success: true,
@@ -63,8 +83,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: dbBookings?.length || 0,
-        totalPages: Math.ceil((dbBookings?.length || 0) / limit),
+        total: enrichedBookings.length,
+        totalPages: Math.ceil(enrichedBookings.length / limit),
       },
     });
   } catch (error: any) {

@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data?.role) {
         logger.log('Database confirmed role:', data.role);
         // Update role to what's in database (may be different if admin promoted user)
-        setRole(data.role as 'renter' | 'owner' | 'admin');
+        setRole(data.role);
       } else {
         // User not in database yet
         logger.log('User not yet in database');

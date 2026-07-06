@@ -19,7 +19,58 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-async function getVenueOwner(venueId: string) {
+const OWNER_PAYMENT_SELECT =
+  "name, email, payment_method, upi_id, bank_account_name, bank_account_number, bank_ifsc, payment_contact_email";
+
+type VenueOwner = {
+  name: string;
+  email: string;
+  payment_contact_email: string | null;
+  payment_method: "upi" | "bank" | null;
+  upi_id: string | null;
+  bank_account_name: string | null;
+  bank_account_number: string | null;
+  bank_ifsc: string | null;
+};
+
+function getEffectivePaymentMethod(owner: VenueOwner): "upi" | "bank" {
+  if (owner.payment_method === "bank") return "bank";
+  if (owner.payment_method === "upi") return "upi";
+  if (owner.bank_account_number && owner.bank_ifsc && owner.bank_account_name) {
+    return "bank";
+  }
+  return "upi";
+}
+
+function normalizeOwner(owner: Record<string, any>): VenueOwner {
+  return {
+    name: owner.name,
+    email: owner.email,
+    payment_contact_email: owner.payment_contact_email || owner.email || null,
+    payment_method: owner.payment_method || null,
+    upi_id: owner.upi_id || null,
+    bank_account_name: owner.bank_account_name || null,
+    bank_account_number: owner.bank_account_number || null,
+    bank_ifsc: owner.bank_ifsc || null,
+  };
+}
+
+function validateOwnerPaymentDetails(owner: VenueOwner) {
+  const method = getEffectivePaymentMethod(owner);
+
+  if (method === "bank") {
+    if (!owner.bank_account_number || !owner.bank_ifsc || !owner.bank_account_name) {
+      throw new Error("Owner bank details missing. Owner must complete payment settings.");
+    }
+    return;
+  }
+
+  if (!owner.upi_id) {
+    throw new Error("Owner UPI ID missing. Owner must complete payment settings.");
+  }
+}
+
+async function getVenueOwner(venueId: string): Promise<VenueOwner | null> {
   const { data: venue } = await supabase
     .from("venues")
     .select("owner_id")
@@ -29,12 +80,12 @@ async function getVenueOwner(venueId: string) {
   if (venue?.owner_id) {
     const { data: owner } = await supabase
       .from("users")
-      .select("name, email")
+      .select(OWNER_PAYMENT_SELECT)
       .eq("id", venue.owner_id)
       .single();
 
-    if (owner?.email) {
-      return { name: owner.name, email: owner.email };
+    if (owner) {
+      return normalizeOwner(owner);
     }
   }
 
@@ -49,12 +100,12 @@ async function getVenueOwner(venueId: string) {
   if (ownership?.owner_user_id) {
     const { data: owner } = await supabase
       .from("users")
-      .select("name, email")
+      .select(OWNER_PAYMENT_SELECT)
       .eq("id", ownership.owner_user_id)
       .single();
 
-    if (owner?.email) {
-      return { name: owner.name, email: owner.email };
+    if (owner) {
+      return normalizeOwner(owner);
     }
   }
 
@@ -62,6 +113,12 @@ async function getVenueOwner(venueId: string) {
     return {
       name: ownership.owner_full_name || "Owner",
       email: ownership.owner_email,
+      payment_contact_email: ownership.owner_email,
+      payment_method: null,
+      upi_id: null,
+      bank_account_name: null,
+      bank_account_number: null,
+      bank_ifsc: null,
     };
   }
 
@@ -151,15 +208,17 @@ async function createContact(
    4. CREATE FUND ACCOUNT USING UPI
 ---------------------------------- */
 
-async function createFundAccount(contactId: string, booking: any) {
-  if (booking.payment_method === "bank") {
+async function createFundAccount(contactId: string, owner: VenueOwner) {
+  const paymentMethod = getEffectivePaymentMethod(owner);
+
+  if (paymentMethod === "bank") {
     return callRazorpayX("fund_accounts", {
       contact_id: contactId,
       account_type: "bank_account",
       bank_account: {
-        name: booking.bank_account_name,
-        ifsc: booking.bank_ifsc,
-        account_number: booking.bank_account_number,
+        name: owner.bank_account_name,
+        ifsc: owner.bank_ifsc,
+        account_number: owner.bank_account_number,
       },
     });
   }
@@ -168,7 +227,7 @@ async function createFundAccount(contactId: string, booking: any) {
     contact_id: contactId,
     account_type: "vpa",
     vpa: {
-      address: booking.upi_id,
+      address: owner.upi_id,
     },
   });
 }
@@ -219,29 +278,31 @@ async function createPayout(params: {
 ---------------------------------- */
 
 async function createOwnerPayout(params: {
-  booking: any;
+  bookingId: string;
+  owner: VenueOwner;
   amountInPaise: number;
-  ownerName: string;
 }) {
-  const bookingId = params.booking.id;
+  const bookingId = params.bookingId;
   const shortBookingRef = `bk_${bookingId.replaceAll("-", "").slice(0, 30)}`;
 
-  const contact = await createContact(bookingId, shortBookingRef, params.ownerName);
-  const fundAccount = await createFundAccount(contact.id, params.booking);
+  const contact = await createContact(bookingId, shortBookingRef, params.owner.name);
+  const fundAccount = await createFundAccount(contact.id, params.owner);
+
+  const paymentMethod = getEffectivePaymentMethod(params.owner);
 
   const payoutDetail =
-    params.booking.payment_method === "bank"
-      ? `${params.booking.bank_account_number} (${params.booking.bank_ifsc})`
-      : params.booking.upi_id;
+    paymentMethod === "bank"
+      ? `${params.owner.bank_account_number} (${params.owner.bank_ifsc})`
+      : params.owner.upi_id;
 
   const payout = await createPayout({
     bookingId,
     fundAccountId: fundAccount.id,
     amountInPaise: params.amountInPaise,
     shortBookingRef,
-    ownerName: params.ownerName,
-    paymentMethod: params.booking.payment_method || "upi",
-    payoutDetail,
+    ownerName: params.owner.name,
+    paymentMethod,
+    payoutDetail: payoutDetail || "",
   });
 
   return {
@@ -268,8 +329,7 @@ async function handlePaymentCaptured(event: any) {
     .from("bookings")
     .select(
       `id, date, start_time, end_time, event_name, event_type, attendees, status,
-      contact_name, contact_email, contact_phone, payment_method, upi_id,
-      bank_account_name, bank_name, bank_account_number, bank_ifsc,
+      contact_name, contact_email, contact_phone,
       payment_status, venue_id,
       base_price, platform_fee, subtotal, gst_amount, total_amount, deposit_amount, balance_amount,
       venues(name, address_street, address_city, address_state)`
@@ -281,13 +341,13 @@ async function handlePaymentCaptured(event: any) {
     throw new Error("Booking not found");
   }
 
-  if (booking.payment_method === 'bank') {
-    if (!booking.bank_account_number || !booking.bank_ifsc) {
-      throw new Error("Bank details missing on booking");
-    }
-  } else if (!booking.upi_id) {
-    throw new Error("UPI ID missing on booking");
+  const venueOwner = await getVenueOwner(booking.venue_id);
+
+  if (!venueOwner) {
+    throw new Error("Venue owner not found");
   }
+
+  validateOwnerPaymentDetails(venueOwner);
 
   const venue = Array.isArray(booking.venues) ? booking.venues[0] : booking.venues;
   const venueAddress = venue
@@ -297,7 +357,6 @@ async function handlePaymentCaptured(event: any) {
 
   const totalAmountInPaise = payment.amount;
   const ownerAmountInPaise = Math.round(Number(booking.base_price) * 100);
-  const venueOwner = await getVenueOwner(booking.venue_id);
 
   /**
    * IMPORTANT:
@@ -416,9 +475,10 @@ async function handlePaymentCaptured(event: any) {
 
   // Send commission email to venue owner
   try {
-    if (venueOwner?.email) {
+    const ownerEmail = venueOwner.payment_contact_email || venueOwner.email;
+    if (ownerEmail) {
       await sendMail({
-        to: venueOwner.email,
+        to: ownerEmail,
         subject: "Commission Credited - Shifts Deal",
         html: venueCommisionSuccessEmail({
           ownerName: venueOwner.name,
@@ -460,12 +520,12 @@ async function handlePaymentCaptured(event: any) {
   // Create payout only once
   try {
     await createOwnerPayout({
-      booking,
+      bookingId,
+      owner: venueOwner,
       amountInPaise: ownerAmountInPaise,
-      ownerName: venueOwner?.name || booking.contact_name,
     });
   } catch (error: any) {
-    console.error("Payout creation failed:", error.message);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 

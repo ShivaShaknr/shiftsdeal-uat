@@ -10,6 +10,12 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   role TEXT CHECK (role IN ('renter', 'owner', 'admin')) DEFAULT 'renter',
+  payment_method TEXT CHECK (payment_method IN ('upi', 'bank')),
+  upi_id TEXT,
+  bank_account_name TEXT,
+  bank_account_number TEXT,
+  bank_ifsc TEXT,
+  payment_contact_email TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

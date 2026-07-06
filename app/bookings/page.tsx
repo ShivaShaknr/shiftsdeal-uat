@@ -135,7 +135,6 @@ export default function MyBookingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('all');
   const [bookings, setBookings] = useState<any[]>([]);
-  const [venues, setVenues] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -148,23 +147,14 @@ export default function MyBookingsPage() {
     
     console.log('🔍 Fetching bookings for user:', user.id);
     try {
-      const [bookingsRes, venuesRes] = await Promise.all([
-        fetch(`/api/bookings?userId=${user.id}`),
-        fetch('/api/venues')
-      ]);
-      
+      const bookingsRes = await fetch(`/api/bookings?userId=${user.id}`);
       const bookingsResult = await bookingsRes.json();
-      const venuesResult = await venuesRes.json();
       
       if (bookingsResult.success && bookingsResult.data) {
         console.log(`✅ Loaded ${bookingsResult.data.length} bookings for user`);
         setBookings(bookingsResult.data);
       }
-      
-      if (venuesResult.success && venuesResult.data) {
-        console.log(`✅ Loaded ${venuesResult.data.length} venues from database`);
-        setVenues(venuesResult.data);
-      }
+      console.log('🔍 Bookings:', bookingsResult.data);
     } catch (error) {
       console.error('❌ Error fetching data:', error);
     } finally {
@@ -201,7 +191,19 @@ export default function MyBookingsPage() {
     endTime: booking.end_time || booking.endTime,
     totalAmount: booking.total_amount || booking.totalAmount,
     eventName: booking.event_name || booking.eventName,
-    venueDetails: venues.find((v) => v._id === (booking.venue_id || booking.venueId)),
+    venueDetails: booking.venue
+      ? {
+          _id: booking.venue.id,
+          name: booking.venue.name,
+          images: booking.venue.images || [],
+          address: {
+            street: booking.venue.address_street,
+            city: booking.venue.address_city,
+            state: booking.venue.address_state,
+          },
+        }
+      : null,
+    ownerDetails: booking.owner || null,
   }));
 
   const filteredBookings =
@@ -412,7 +414,7 @@ export default function MyBookingsPage() {
                 <Card className="overflow-hidden hover:border-primary/30 transition-colors">
                   <div className="flex flex-col md:flex-row">
                     {/* Venue Image */}
-                    {booking.venueDetails && (
+                    {booking.venueDetails?.images?.[0] && (
                       <div className="md:w-48 h-32 md:h-auto">
                         <img
                           src={booking.venueDetails.images[0]}
@@ -431,7 +433,7 @@ export default function MyBookingsPage() {
                           </h3>
                           <p className="text-sm text-foreground-muted flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
-                            {booking.venueDetails?.address.city}
+                            {booking.venueDetails?.address?.city || '—'}
                           </p>
                         </div>
                         <Badge variant={getStatusVariant(booking.status) as any}>

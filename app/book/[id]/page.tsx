@@ -9,28 +9,20 @@ import {
   ChevronRight,
   Check,
   User,
-  Building2,
   Calendar,
-  Upload,
-  Shield,
   FileText,
   CheckCircle,
-  ScanLine,
   FileCheck2,
-  AlertTriangle,
   Download,
   Loader2,
-  Wallet,
 } from 'lucide-react';
-import { Button, Card, Input, Badge, WebcamCapture } from '@/components/ui';
+import { Button, Card, Input, Badge } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
 
-type BookingStep = 'details' | 'kyc' | 'contract' | 'confirm' | 'bank';
+type BookingStep = 'details' | 'contract' | 'confirm';
 
 const steps: { id: BookingStep; label: string; icon: any }[] = [
   { id: 'details', label: 'Event Details', icon: User },
-  { id: 'kyc', label: 'Verification', icon: Upload },
-  { id: 'bank', label: 'Bank Details', icon: Wallet },
   { id: 'contract', label: 'Contract & Sign', icon: FileText },
   { id: 'confirm', label: 'Confirm', icon: CheckCircle },
 ];
@@ -59,32 +51,14 @@ export default function BookingPage() {
     startTime: '09:00',
     endTime: '18:00',
 
-    // KYC
-    kycDocumentType: '',
-    kycDocument: null as File | null,
-    kycDocumentName: '',
-    kycFacePhoto: null as File | null,
-    kycFacePhotoName: '',
     specialRequirements: '',
-
-    // Bank
-    paymentMethod: 'upi' as 'upi' | 'bank',
-    upiId: '',
-    bankAccountName: '',
-    bankName: '',
-    bankAccountNumber: '',
-    bankIfsc: '',
 
     // Contract
     contractAccepted: false,
     signature: '',
   });
 
-  // AI Results
-  const [kycResult, setKycResult] = useState<any>(null);
   const [contract, setContract] = useState<any>(null);
-  const [showWebcam, setShowWebcam] = useState(false);
-  const [imageClarityConfirmed, setImageClarityConfirmed] = useState(false);
 
   useEffect(() => {
     const fetchVenue = async () => {
@@ -227,58 +201,6 @@ export default function BookingPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData((prev) => ({
-        ...prev,
-        kycDocument: file,
-        kycDocumentName: file.name,
-      }));
-    }
-  };
-
-  const processKYC = async () => {
-    if (!formData.kycDocumentType) {
-      alert('Please select document type');
-      return;
-    }
-    if (!formData.kycDocument) {
-      alert('Please upload a document');
-      return;
-    }
-    if (!formData.kycFacePhoto) {
-      alert('Please capture your face photo');
-      return;
-    }
-
-    setIsLoading(true);
-    
-    // Simulate processing
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Mark as verified without OCR since Groq vision is unavailable
-    setKycResult({
-      verified: true,
-      documentType: formData.kycDocumentType as any,
-      extractedName: formData.contactName,
-      extractedId: '****',
-      nameMatch: true,
-      riskScore: 10,
-      flags: [],
-      notes: 'Documents uploaded successfully. Manual verification pending.',
-      extractedInfo: {
-        name: formData.contactName,
-        documentUploaded: true,
-        facePhotoUploaded: true,
-      },
-    });
-    
-    setIsLoading(false);
-  };
-
-
-
   const generateContract = async () => {
     setIsLoading(true);
     
@@ -393,9 +315,6 @@ export default function BookingPage() {
     return true;
   };
 
-  const isValidUpiId = (upi: string) =>
-    /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/.test(upi.trim());
-
   const validateEventDetails = () => {
     // Check required fields
     if (!formData.eventType || !formData.eventName || !formData.attendees || 
@@ -459,28 +378,6 @@ export default function BookingPage() {
       if (!validateEventDetails()) {
         return;
       }
-      setCurrentStep('kyc');
-    } else if (currentStep === 'kyc') {
-      if (!kycResult) {
-        await processKYC();
-      }
-      setCurrentStep('bank');
-    } else if (currentStep === 'bank') {
-      if (formData.paymentMethod === 'upi') {
-        if (!formData.upiId.trim()) {
-          alert('Please enter your UPI ID');
-          return;
-        }
-        if (!isValidUpiId(formData.upiId)) {
-          alert('Please enter a valid UPI ID (e.g. yourname@paytm)');
-          return;
-        }
-      } else {
-        if (!formData.bankAccountName.trim() || !formData.bankName.trim() || !formData.bankAccountNumber.trim() || !formData.bankIfsc.trim()) {
-          alert('Please fill all bank details');
-          return;
-        }
-      }
       setCurrentStep('contract');
     } else if (currentStep === 'contract') {
       if (!formData.contractAccepted) {
@@ -496,7 +393,7 @@ export default function BookingPage() {
   };
 
   const goToPreviousStep = () => {
-    const stepOrder: BookingStep[] = ['details', 'kyc', 'bank', 'contract', 'confirm'];
+    const stepOrder: BookingStep[] = ['details', 'contract', 'confirm'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(stepOrder[currentIndex - 1]);
@@ -509,45 +406,6 @@ export default function BookingPage() {
     setIsLoading(true);
     
     try {
-      // Upload KYC documents to Supabase Storage
-      let kycDocumentUrl = '';
-      let kycFacePhotoUrl = '';
-      
-      if (formData.kycDocument) {
-        const docFileName = `${user?.id || 'guest'}/${Date.now()}-${formData.kycDocumentName}`;
-        const { data: docData, error: docError } = await fetch('/api/storage/upload', {
-          method: 'POST',
-          body: JSON.stringify({
-            bucket: 'kyc-documents',
-            fileName: docFileName,
-            file: await fileToBase64(formData.kycDocument),
-          }),
-          headers: { 'Content-Type': 'application/json' },
-        }).then(res => res.json());
-        
-        if (!docError && docData?.publicUrl) {
-          kycDocumentUrl = docData.publicUrl;
-        }
-      }
-      
-      if (formData.kycFacePhoto) {
-        const photoFileName = `${user?.id || 'guest'}/${Date.now()}-face.jpg`;
-        const { data: photoData, error: photoError } = await fetch('/api/storage/upload', {
-          method: 'POST',
-          body: JSON.stringify({
-            bucket: 'kyc-photos',
-            fileName: photoFileName,
-            file: await fileToBase64(formData.kycFacePhoto),
-          }),
-          headers: { 'Content-Type': 'application/json' },
-        }).then(res => res.json());
-        
-        if (!photoError && photoData?.publicUrl) {
-          kycFacePhotoUrl = photoData.publicUrl;
-        }
-      }
-      
-      // Create booking in database with full pricing breakdown
       const bookingData = {
         venue_id: venue._id,
         renter_id: user?.id || null,
@@ -562,16 +420,10 @@ export default function BookingPage() {
         contact_name: formData.contactName,
         contact_email: formData.contactEmail,
         contact_phone: formData.contactPhone,
-        payment_method: formData.paymentMethod,
-        upi_id: formData.paymentMethod === 'upi' ? formData.upiId.trim() : null,
-        bank_account_name: formData.paymentMethod === 'bank' ? formData.bankAccountName.trim() : null,
-        bank_name: formData.paymentMethod === 'bank' ? formData.bankName.trim() : null,
-        bank_account_number: formData.paymentMethod === 'bank' ? formData.bankAccountNumber.trim() : null,
-        bank_ifsc: formData.paymentMethod === 'bank' ? formData.bankIfsc.trim().toUpperCase() : null,
         special_requirements: formData.specialRequirements,
-        kyc_document_type: formData.kycDocumentType,
-        kyc_document_url: kycDocumentUrl || 'pending',
-        kyc_face_photo_url: kycFacePhotoUrl || 'pending',
+        kyc_document_type: 'N/A',
+        kyc_document_url: 'N/A',
+        kyc_face_photo_url: 'N/A',
         contract_data: contract,
         signature: formData.signature,
         // Store full pricing breakdown
@@ -633,15 +485,6 @@ export default function BookingPage() {
     }
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
-
   if (!venue) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -670,48 +513,51 @@ export default function BookingPage() {
         </div>
 
         {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
+        <div className="mb-8 px-2">
+          <div className="flex items-start">
             {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div
-                  className={cn(
-                    'flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all',
-                    currentStepIndex > index
-                      ? 'bg-primary border-primary text-background'
-                      : currentStepIndex === index
-                      ? 'border-primary text-primary'
-                      : 'border-border text-foreground-muted'
-                  )}
-                >
-                  {currentStepIndex > index ? (
-                    <Check className="w-5 h-5" />
-                  ) : (
-                    <step.icon className="w-5 h-5" />
-                  )}
-                </div>
-                {index < steps.length - 1 && (
+              <div
+                key={step.id}
+                className={cn('flex', index < steps.length - 1 && 'flex-1')}
+              >
+                <div className="flex flex-col items-center shrink-0">
                   <div
                     className={cn(
-                      'hidden sm:block w-20 h-0.5 mx-2',
-                      currentStepIndex > index ? 'bg-primary' : 'bg-border'
+                      'relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 bg-background transition-all',
+                      currentStepIndex > index
+                        ? 'border-primary bg-primary text-background'
+                        : currentStepIndex === index
+                        ? 'border-primary text-primary'
+                        : 'border-border text-foreground-muted'
                     )}
-                  />
+                  >
+                    {currentStepIndex > index ? (
+                      <Check className="w-5 h-5" />
+                    ) : (
+                      <step.icon className="w-5 h-5" />
+                    )}
+                  </div>
+                  <span
+                    className={cn(
+                      'mt-2 max-w-[88px] text-center text-xs',
+                      currentStep === step.id ? 'text-primary font-medium' : 'text-foreground-muted'
+                    )}
+                  >
+                    {step.label}
+                  </span>
+                </div>
+
+                {index < steps.length - 1 && (
+                  <div className="flex flex-1 items-start px-2 pt-5">
+                    <div
+                      className={cn(
+                        'h-0.5 w-full',
+                        currentStepIndex > index ? 'bg-primary' : 'bg-border'
+                      )}
+                    />
+                  </div>
                 )}
               </div>
-            ))}
-          </div>
-          <div className="flex justify-between mt-2">
-            {steps.map((step) => (
-              <span
-                key={step.id}
-                className={cn(
-                  'text-xs hidden sm:block',
-                  currentStep === step.id ? 'text-primary' : 'text-foreground-muted'
-                )}
-              >
-                {step.label}
-              </span>
             ))}
           </div>
         </div>
@@ -896,223 +742,7 @@ export default function BookingPage() {
                   </motion.div>
                 )}
 
-                {/* Step 2: KYC Verification */}
-                {currentStep === 'kyc' && (
-                  <motion.div
-                    key="kyc"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="space-y-6"
-                  >
-                    <div>
-                      <h2 className="text-xl font-semibold text-foreground mb-2">KYC Verification</h2>
-                      <p className="text-foreground-muted">
-                        Upload your document and capture face photo for identity verification.
-                      </p>
-                    </div>
-
-                    {!kycResult ? (
-                      <div className="space-y-6">
-                        {/* Document Type Selection */}
-                        <div>
-                          <label className="block text-sm font-medium text-foreground-muted mb-2">
-                            Document Type <span className="text-error">*</span>
-                          </label>
-                          <select
-                            value={formData.kycDocumentType}
-                            onChange={(e) => handleInputChange('kycDocumentType', e.target.value)}
-                            className="w-full bg-background-card border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-primary"
-                          >
-                            <option value="">Select document type</option>
-                            <option value="PAN">PAN Card</option>
-                            <option value="GST">GST Certificate</option>
-                            <option value="Aadhaar">Aadhaar Card</option>
-                            <option value="Company Registration">Company Registration Certificate</option>
-                          </select>
-                        </div>
-
-                        {/* Document Upload */}
-                        {formData.kycDocumentType && (
-                          <div>
-                            <label className="block text-sm font-medium text-foreground-muted mb-2">
-                              Upload {formData.kycDocumentType} <span className="text-error">*</span>
-                            </label>
-                            <div className="border-2 border-dashed border-border rounded-xl p-6 text-center">
-                              <input
-                                type="file"
-                                id="kyc-upload"
-                                accept="image/*,.pdf"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      kycDocument: file,
-                                      kycDocumentName: file.name,
-                                    }));
-                                  }
-                                }}
-                                className="hidden"
-                              />
-                              <label htmlFor="kyc-upload" className="cursor-pointer">
-                                <Upload className="w-10 h-10 text-foreground-muted mx-auto mb-3" />
-                                <p className="text-foreground font-medium mb-1">
-                                  {formData.kycDocumentName || 'Click to upload'}
-                                </p>
-                                <p className="text-xs text-foreground-muted">
-                                  Clear photo or scan, max 10MB
-                                </p>
-                              </label>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Face Photo Capture */}
-                        {formData.kycDocument && (
-                          <div>
-                            <label className="block text-sm font-medium text-foreground-muted mb-2">
-                              Capture Face Photo <span className="text-error">*</span>
-                            </label>
-                            <div 
-                              className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary transition-colors"
-                              onClick={() => setShowWebcam(true)}
-                            >
-                              <User className="w-10 h-10 text-foreground-muted mx-auto mb-3" />
-                              <p className="text-foreground font-medium mb-1">
-                                {formData.kycFacePhotoName || 'Click to open camera'}
-                              </p>
-                              <p className="text-xs text-foreground-muted">
-                                Clear frontal face photo for verification
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Image Clarity Confirmation */}
-                        {formData.kycDocument && formData.kycFacePhoto && (
-                          <label className="flex items-start gap-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={imageClarityConfirmed}
-                              onChange={(e) => setImageClarityConfirmed(e.target.checked)}
-                              className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary focus:ring-offset-0"
-                            />
-                            <span className="text-sm text-foreground-muted">
-                              I confirm that my face is clearly visible in the captured image and the uploaded document is readable.
-                            </span>
-                          </label>
-                        )}
-                      </div>
-                    ) : (
-                      <Card className="p-6 border-success/30 bg-success/5">
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-success/20">
-                            <Check className="w-6 h-6 text-success" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-foreground mb-1">
-                              Verification Complete
-                            </h3>
-                            <p className="text-sm text-foreground-muted mb-3">
-                              Documents uploaded successfully. Manual verification pending.
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    )}
-
-                  
-                  </motion.div>
-                )}
-
-                {/* Step 3: Bank Details */}
-                {currentStep === 'bank' && (
-                  <motion.div
-                    key="bank"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="space-y-6"
-                  >
-                    <div>
-                      <h2 className="text-xl font-semibold text-foreground mb-2">Payment Details</h2>
-                      <p className="text-foreground-muted mb-4">
-                        Choose how you want to receive payments.
-                      </p>
-
-                      <div className="flex rounded-xl border border-border p-1 mb-6">
-                        <button
-                          type="button"
-                          onClick={() => setFormData((prev) => ({ ...prev, paymentMethod: 'upi' }))}
-                          className={cn(
-                            'flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                            formData.paymentMethod === 'upi'
-                              ? 'bg-primary text-background'
-                              : 'text-foreground-muted hover:text-foreground'
-                          )}
-                        >
-                          UPI
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData((prev) => ({ ...prev, paymentMethod: 'bank' }))}
-                          className={cn(
-                            'flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                            formData.paymentMethod === 'bank'
-                              ? 'bg-primary text-background'
-                              : 'text-foreground-muted hover:text-foreground'
-                          )}
-                        >
-                          Bank Account
-                        </button>
-                      </div>
-                    </div>
-
-                    {formData.paymentMethod === 'upi' ? (
-                      <Input
-                        label="UPI ID"
-                        placeholder="yourname@paytm"
-                        value={formData.upiId}
-                        onChange={(e) => handleInputChange('upiId', e.target.value)}
-                        required
-                      />
-                    ) : (
-                      <div className="space-y-4">
-                        <Input
-                          label="Account Holder Name"
-                          placeholder="Name as per bank account"
-                          value={formData.bankAccountName}
-                          onChange={(e) => handleInputChange('bankAccountName', e.target.value)}
-                          required
-                        />
-                        <Input
-                          label="Bank Name"
-                          placeholder="e.g. HDFC Bank"
-                          value={formData.bankName}
-                          onChange={(e) => handleInputChange('bankName', e.target.value)}
-                          required
-                        />
-                        <Input
-                          label="Account Number"
-                          placeholder="Enter account number"
-                          value={formData.bankAccountNumber}
-                          onChange={(e) => handleInputChange('bankAccountNumber', e.target.value)}
-                          required
-                        />
-                        <Input
-                          label="IFSC Code"
-                          placeholder="e.g. HDFC0001234"
-                          value={formData.bankIfsc}
-                          onChange={(e) => handleInputChange('bankIfsc', e.target.value.toUpperCase())}
-                          required
-                        />
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {/* Step 4: Contract */}
+                {/* Step 2: Contract */}
                 {currentStep === 'contract' && (
                   <motion.div
                     key="contract"
@@ -1236,11 +866,8 @@ export default function BookingPage() {
                         <p className="text-sm text-foreground-muted">{formData.contactName}</p>
                       </div>
                       <div className="pt-4">
-                        <h4 className="font-medium text-foreground mb-2">Verification Status</h4>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="success">KYC Verified</Badge>
-                          <Badge variant="success">Contract Signed</Badge>
-                        </div>
+                        <h4 className="font-medium text-foreground mb-2">Status</h4>
+                        <Badge variant="success">Contract Signed</Badge>
                       </div>
                     </Card>
                   </motion.div>
@@ -1270,16 +897,10 @@ export default function BookingPage() {
                   <Button
                     onClick={goToNextStep}
                     isLoading={isLoading}
-                    disabled={
-                      (currentStep === 'details' && !isEventDetailsValid()) ||
-                      (currentStep === 'kyc' && !formData.kycDocumentName && !kycResult) ||
-                      (currentStep === 'kyc' && Boolean(formData.kycFacePhoto) && !imageClarityConfirmed)
-                    }
+                    disabled={currentStep === 'details' && !isEventDetailsValid()}
                     rightIcon={<ChevronRight className="w-4 h-4" />}
                   >
-                    {currentStep === 'kyc' && !kycResult
-                      ? 'Verify & Continue'
-                      : currentStep === 'contract' && !contract
+                    {currentStep === 'contract' && !contract
                       ? 'Generate Contract'
                       : 'Continue'}
                   </Button>
@@ -1370,19 +991,6 @@ export default function BookingPage() {
         </div>
       </div>
 
-      {/* Webcam Capture Modal */}
-      {showWebcam && (
-        <WebcamCapture
-          onCapture={(file) => {
-            setFormData(prev => ({
-              ...prev,
-              kycFacePhoto: file,
-              kycFacePhotoName: file.name,
-            }));
-          }}
-          onClose={() => setShowWebcam(false)}
-        />
-      )}
     </div>
   );
 }
