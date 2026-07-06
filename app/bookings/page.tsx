@@ -47,6 +47,11 @@ const downloadInvoice = (booking: any, venueDetails: any) => {
   const depositAmount = booking.deposit_amount || booking.depositAmount || 0;
   const balanceAmount = booking.balance_amount || booking.balanceAmount || 0;
   
+  const commissionLabel =
+    basePrice > 0
+      ? `${((platformFee / basePrice) * 100).toFixed(2)}%`
+      : `${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE || 0.1) * 100).toFixed(2)}%`;
+
   const invoiceContent = `
 ================================================================================
                               SHIFTS DEAL PRO
@@ -83,7 +88,7 @@ Phone:           ${booking.contactPhone || booking.contact_phone || 'N/A'}
                              PAYMENT SUMMARY
 --------------------------------------------------------------------------------
 Venue Charges:                                           ${formatCurrency(basePrice)}
-Platform Fee (${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) * 100).toFixed(2)}%):                                       ${formatCurrency(platformFee)}
+Platform Fee (${commissionLabel}):                                       ${formatCurrency(platformFee)}
                                                          ----------------
 Subtotal:                                                ${formatCurrency(subtotal)}
 GST (18%):                                               ${formatCurrency(gstAmount)}

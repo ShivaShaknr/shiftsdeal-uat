@@ -74,6 +74,7 @@ export async function GET(
       reviewCount: venue.reviews_count,
       reviews: venue.reviews_count,
       ownerId: venue.owner_id,
+      commission_percentage: venue.commission_percentage,
       rules: ['No smoking', 'ID verification required', 'Professional events only'],
       isVerified: true,
       isActive: true,

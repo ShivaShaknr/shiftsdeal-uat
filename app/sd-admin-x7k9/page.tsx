@@ -485,7 +485,7 @@ export default function AdminDashboard() {
                         >
                           <Icons.Eye />
                         </button>
-                        {booking.status === 'confirmed' && !booking.deposit_paid && (
+                        {/* {booking.status === 'confirmed' && !booking.deposit_paid && (
                           <button
                             onClick={() => updateBooking(booking.id, { deposit_paid: true })}
                             disabled={updatingId === booking.id}
@@ -504,7 +504,7 @@ export default function AdminDashboard() {
                           >
                             <Icons.Mail />
                           </button>
-                        )}
+                        )} */}
                       </div>
                     </td>
                   </tr>

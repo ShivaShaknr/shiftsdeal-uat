@@ -15,7 +15,8 @@ ALTER TABLE public.venues
   ADD COLUMN IF NOT EXISTS videos TEXT[] DEFAULT ARRAY[]::TEXT[],
   ADD COLUMN IF NOT EXISTS gst_number TEXT,
   ADD COLUMN IF NOT EXISTS is_disabled BOOLEAN DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
+  ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS commission_percentage DECIMAL(5,2) DEFAULT 0.00;
 
 -- Owner mapping table for future-proof ownership model (multiple owners/venues).
 CREATE TABLE IF NOT EXISTS public.venue_ownerships (

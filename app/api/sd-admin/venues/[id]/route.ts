@@ -151,10 +151,10 @@ export async function PATCH(
             'name', 'type', 'description', 'capacity_min', 'capacity_max',
             'address_street', 'address_city', 'address_state', 'address_pincode',
             'images', 'pricing_hourly', 'pricing_half_day', 'pricing_full_day',
-            'security_deposit', 'amenities', 'availability', 'videos',
+            'amenities', 'availability', 'videos',
             'google_maps_link', 'min_booking_hours', 'available_timings',
             'pricing_per_slot', 'rules_restrictions', 'cancellation_policy',
-            'gst_number', 'is_archived', 'is_disabled'
+            'gst_number', 'is_archived', 'is_disabled', 'commission_percentage'
           ];
 
           // Filter allowed fields from updateData
@@ -173,10 +173,10 @@ export async function PATCH(
         'name', 'type', 'description', 'capacity_min', 'capacity_max',
         'address_street', 'address_city', 'address_state', 'address_pincode',
         'images', 'pricing_hourly', 'pricing_half_day', 'pricing_full_day',
-        'security_deposit', 'amenities', 'availability', 'videos',
+        'amenities', 'availability', 'videos',
         'google_maps_link', 'min_booking_hours', 'available_timings',
         'pricing_per_slot', 'rules_restrictions', 'cancellation_policy',
-        'gst_number', 'is_archived', 'is_disabled', 'owner_id'
+        'gst_number', 'is_archived', 'is_disabled', 'commission_percentage', 'owner_id'
       ];
 
       allowedFields.forEach(field => {

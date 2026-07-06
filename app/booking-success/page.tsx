@@ -29,6 +29,7 @@ interface ReceiptData {
     totalAmount: number;
     depositAmount: number;
     balanceAmount: number;
+    commissionLabel?: string;
   };
   createdAt: string;
 }
@@ -73,6 +74,12 @@ export default function BookingSuccessPage() {
 
     const { pricing } = receiptData;
     
+    const commissionLabel =
+      pricing.commissionLabel ||
+      (pricing.basePrice > 0
+        ? `${((pricing.platformFee / pricing.basePrice) * 100).toFixed(2)}%`
+        : `${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE || 0.1) * 100).toFixed(2)}%`);
+
     // Generate receipt content
     const receiptContent = `
 ================================================================================
@@ -110,7 +117,7 @@ Phone: ${receiptData.contactPhone}
                               PAYMENT BREAKDOWN
 --------------------------------------------------------------------------------
 Venue Charges                               ${formatCurrency(pricing.basePrice).padStart(15)}
-Platform Fee (${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) * 100).toFixed(2)}%)                           ${formatCurrency(pricing.platformFee).padStart(15)}
+Platform Fee (${commissionLabel}):                           ${formatCurrency(pricing.platformFee).padStart(15)}
                                             ---------------
 Subtotal                                    ${formatCurrency(pricing.subtotal).padStart(15)}
 GST (18%)                                   ${formatCurrency(pricing.gst).padStart(15)}

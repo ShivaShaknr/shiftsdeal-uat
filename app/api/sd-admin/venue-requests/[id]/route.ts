@@ -36,7 +36,7 @@ export async function PATCH(
         'name', 'type', 'description', 'capacity_min', 'capacity_max',
         'address_street', 'address_city', 'address_state', 'address_pincode',
         'images', 'pricing_hourly', 'pricing_half_day', 'pricing_full_day',
-        'security_deposit', 'amenities', 'rules'
+        'security_deposit', 'amenities', 'rules', 'commission_percentage'
       ];
 
       // Filter allowed fields from updateData
@@ -122,6 +122,7 @@ export async function PATCH(
         pricing_half_day: venueRequest.pricing_half_day,
         pricing_full_day: venueRequest.pricing_full_day,
         amenities: venueRequest.amenities,
+        commission_percentage: venueRequest.commission_percentage ?? 0,
         availability: 'available',
         rating: 4.8 + Math.random() * 0.2, // Random rating between 4.8 and 5.0 for new venues
         reviews_count: 0,

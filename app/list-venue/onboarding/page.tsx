@@ -971,7 +971,7 @@ export default function VenueOnboardingPage() {
                       </div>
                     </div>
 
-                    <div>
+                    {/* <div>
                       <label className="block text-sm font-medium text-foreground-muted mb-2">
                         Security Deposit (Optional)
                       </label>
@@ -990,7 +990,7 @@ export default function VenueOnboardingPage() {
                       <p className="text-xs text-foreground-muted mt-2">
                         Refundable deposit for damage protection
                       </p>
-                    </div>
+                    </div> */}
                   </motion.div>
                 )}
 

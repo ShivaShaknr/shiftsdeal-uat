@@ -53,6 +53,7 @@ interface VenueRequest {
   pricing_half_day: number | null;
   pricing_full_day: number | null;
   security_deposit: number | null;
+  commission_percentage?: number | null;
   amenities: string[];
   rules: string[];
   status: 'pending' | 'approved' | 'rejected';

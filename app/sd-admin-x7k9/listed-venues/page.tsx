@@ -42,6 +42,7 @@ interface Venue {
   pricing_half_day: number | null;
   pricing_full_day: number | null;
   security_deposit: number | null;
+  commission_percentage?: number | null;
   amenities: string[];
   availability: string;
   rating: number;

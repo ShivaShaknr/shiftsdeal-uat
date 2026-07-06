@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS venues (
   address_country TEXT DEFAULT 'India',
   capacity_min INTEGER NOT NULL,
   capacity_max INTEGER NOT NULL,
+  commission_percentage DECIMAL(5,2) DEFAULT 0.00,
   pricing_hourly DECIMAL(10,2) NOT NULL,
   pricing_half_day DECIMAL(10,2),
   pricing_full_day DECIMAL(10,2),

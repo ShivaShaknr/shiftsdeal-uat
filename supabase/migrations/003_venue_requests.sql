@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS venue_requests (
   pricing_half_day DECIMAL(10,2),
   pricing_full_day DECIMAL(10,2),
   security_deposit DECIMAL(10,2),
+  commission_percentage DECIMAL(5,2) DEFAULT 0.00,
   
   -- Amenities & Rules
   amenities TEXT[] DEFAULT ARRAY[]::TEXT[],

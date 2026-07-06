@@ -153,14 +153,19 @@ export default function BookingPage() {
   // Calculate full pricing with GST and platform fee
   const calculateFullPricing = () => {
     const basePrice = calculatePrice();
-    const platformFee = Math.round(basePrice * (Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE))); // 5% platform fee
+    const defaultRate = Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) || 0.1;
+    const commissionRate =
+      venue?.commission_percentage > 0
+        ? venue.commission_percentage / 100
+        : defaultRate;
+    const platformFee = Math.round(basePrice * commissionRate);
     const subtotal = basePrice + platformFee;
-    const gst = Math.round(subtotal * 0.18); // 18% GST
+    const gst = Math.round(subtotal * 0.18);
     const totalAmount = subtotal + gst;
     const depositPercent = 30;
     const depositAmount = Math.round(totalAmount * (depositPercent / 100));
     const balanceAmount = totalAmount - depositAmount;
-    
+
     return {
       basePrice,
       platformFee,
@@ -170,6 +175,7 @@ export default function BookingPage() {
       depositPercent,
       depositAmount,
       balanceAmount,
+      commissionLabel: `${commissionRate * 100}%`,
     };
   };
 
@@ -227,7 +233,7 @@ export default function BookingPage() {
           },
           {
             heading: '4. Payment Terms',
-            content: `Venue Charges: ${formatCurrency(pricing.basePrice)}\nPlatform Fee (5%): ${formatCurrency(pricing.platformFee)}\nSubtotal: ${formatCurrency(pricing.subtotal)}\nGST (18%): ${formatCurrency(pricing.gst)}\n\nTotal Amount: ${formatCurrency(pricing.totalAmount)}\nDeposit (${pricing.depositPercent}%): ${formatCurrency(pricing.depositAmount)}\nBalance Amount: ${formatCurrency(pricing.balanceAmount)}\n\nThe deposit amount must be paid within 24 hours of signing this agreement to confirm the booking. The balance amount is due 7 days before the event date.`,
+            content: `Venue Charges: ${formatCurrency(pricing.basePrice)}\nPlatform Fee (${pricing.commissionLabel}): ${formatCurrency(pricing.platformFee)}\nSubtotal: ${formatCurrency(pricing.subtotal)}\nGST (18%): ${formatCurrency(pricing.gst)}\n\nTotal Amount: ${formatCurrency(pricing.totalAmount)}\nDeposit (${pricing.depositPercent}%): ${formatCurrency(pricing.depositAmount)}\nBalance Amount: ${formatCurrency(pricing.balanceAmount)}\n\nThe deposit amount must be paid within 24 hours of signing this agreement to confirm the booking. The balance amount is due 7 days before the event date.`,
           },
           {
             heading: '5. Cancellation Policy',
@@ -469,6 +475,7 @@ export default function BookingPage() {
             totalAmount: contract.totalAmount,
             depositAmount: contract.depositAmount,
             balanceAmount: contract.balanceAmount,
+            commissionLabel: contract.commissionLabel,
           },
           createdAt: new Date().toISOString(),
         };
@@ -951,7 +958,7 @@ export default function BookingPage() {
                   <span className="text-foreground">{formatCurrency(calculateFullPricing().basePrice)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-foreground-muted">Platform Fee (${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) * 100)}%)</span>
+                  <span className="text-foreground-muted">Platform Fee ({calculateFullPricing().commissionLabel})</span>
                   <span className="text-foreground">{formatCurrency(calculateFullPricing().platformFee)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -962,7 +969,7 @@ export default function BookingPage() {
                   <span className="text-foreground-muted">GST (18%)</span>
                   <span className="text-foreground">{formatCurrency(calculateFullPricing().gst)}</span>
                 </div>
-                {contract && (
+                {/* {contract && (
                   <>
                     <div className="flex justify-between text-sm pt-2 border-t border-border/50">
                       <span className="text-foreground-muted">
@@ -975,7 +982,7 @@ export default function BookingPage() {
                       <span className="text-foreground">{formatCurrency(contract.balanceAmount)}</span>
                     </div>
                   </>
-                )}
+                )} */}
               </div>
 
               <div className="flex justify-between pt-4">

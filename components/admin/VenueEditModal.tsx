@@ -28,6 +28,7 @@ interface VenueData {
   pricing_half_day: number | null;
   pricing_full_day: number | null;
   security_deposit: number | null;
+  commission_percentage?: number | null;
   amenities: string[];
   rules?: string[];
   availability?: string;
@@ -412,7 +413,7 @@ export default function VenueEditModal({
             </div>
 
             {/* Security Deposit */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-foreground-muted mb-2">
                 Security Deposit (₹)
               </label>
@@ -424,6 +425,31 @@ export default function VenueEditModal({
                 onChange={(e) => handleInputChange('security_deposit', e.target.value ? parseFloat(e.target.value) : null)}
                 className="w-full bg-background-light border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
               />
+            </div> */}
+
+            {/* Commission Percentage */}
+            <div>
+              <label className="block text-sm font-medium text-foreground-muted mb-2">
+                Commission Percentage (%)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={formData.commission_percentage ?? ''}
+                onChange={(e) =>
+                  handleInputChange(
+                    'commission_percentage',
+                    e.target.value === '' ? null : parseFloat(e.target.value)
+                  )
+                }
+                placeholder="e.g. 10"
+                className="w-full bg-background-light border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
+              />
+              <p className="mt-1.5 text-xs text-foreground-muted">
+                Platform fee on bookings. Leave empty to use default.
+              </p>
             </div>
 
             {/* Availability (for live venues only) */}

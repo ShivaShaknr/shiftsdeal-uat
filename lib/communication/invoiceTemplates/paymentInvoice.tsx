@@ -64,6 +64,10 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
   const gstAmount = Number(data.gstAmount || 0);
   const subtotal = Number(data.subtotal || basePrice + platformFee);
   const totalAmount = Number(data.totalAmount || subtotal + gstAmount);
+  const commissionLabel =
+    basePrice > 0
+      ? `${((platformFee / basePrice) * 100).toFixed(0)}%`
+      : `${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE || 0.1) * 100).toFixed(0)}%`;
 
   const invoiceNo = `INV-${data.bookingId.substring(0, 8).toUpperCase()}`;
 
@@ -209,10 +213,6 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     if (!data.startTime || !data.endTime) return "-";
     return `${data.startTime} - ${data.endTime}`;
   };
-
-  const commissionLabel = process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE
-    ? `${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) * 100).toFixed(0)}%`
-    : "5%";
 
   // Bill to / Booking details boxes
   const boxY = 78;
