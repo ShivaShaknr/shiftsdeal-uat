@@ -411,6 +411,7 @@ async function handlePaymentCaptured(event: any) {
       const invoiceFileName = `Invoice-${bookingId.substring(0, 8)}.pdf`;
       // Email
       if (booking.contact_email) {
+        if(event.event === "payment.captured") {
         await sendMail({
           to: booking.contact_email,
           subject: "Payment Successful - Booking Confirmed",
@@ -428,10 +429,23 @@ async function handlePaymentCaptured(event: any) {
             },
           ],
         });
+        }
+        else if(event.event === "payment.failed") {
+          await sendMail({
+            to: booking.contact_email,
+            subject: "Payment Failed - Booking Confirmed",
+            html: paymentFailedEmail({
+              contactName: booking.contact_name,
+              eventName: booking.event_name,
+              amount: payment.amount,
+            }),
+          });
+        }
       }
 
       // WhatsApp
       if (booking.contact_phone) {
+        if(event.event === "payment.captured") {
         const invoiceMediaId = await uploadWhatsAppMedia({
           buffer: invoicePdfBuffer,
           filename: invoiceFileName,
@@ -466,6 +480,25 @@ async function handlePaymentCaptured(event: any) {
             },
           ],
         });
+        }
+        else if(event.event === "payment.failed") {
+          await sendWhatsAppTemplate({
+            to: booking.contact_phone,
+            templateName: "payment_failure",
+            languageCode: "en",
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", text: booking.contact_name || "Customer" },
+                  { type: "text", text: String(booking.total_amount || payment.amount / 100) },
+                  { type: "text", text: bookingId },
+                  { type: "text", text: payment.id },
+                ],
+              },
+            ],
+          }); 
+        }
       }
 
     }
