@@ -473,26 +473,6 @@ async function handlePaymentCaptured(event: any) {
     console.error("Payment success email failed:", error.message);
   }
 
-  // Send commission email to venue owner
-  try {
-    const ownerEmail = venueOwner.payment_contact_email || venueOwner.email;
-    if (ownerEmail) {
-      await sendMail({
-        to: ownerEmail,
-        subject: "Commission Credited - Shifts Deal",
-        html: venueCommisionSuccessEmail({
-          ownerName: venueOwner.name,
-          eventName: booking.event_name,
-          amount: ownerAmountInPaise,
-          razorpayPaymentId: payment.id,
-          razorpayOrderId: payment.order_id,
-        }),
-      });
-    }
-  } catch (error: any) {
-    console.error("Owner commission email failed:", error.message);
-  }
-
   // Create invoice only once
   try {
     const invoice = await createRazorpayInvoice({
@@ -519,13 +499,22 @@ async function handlePaymentCaptured(event: any) {
 
   // Create payout only once
   try {
-    await createOwnerPayout({
+    const payout = await createOwnerPayout({
       bookingId,
       owner: venueOwner,
       amountInPaise: ownerAmountInPaise,
     });
+
+    await supabase
+      .from("bookings")
+      .update({
+        razorpay_payout_id: payout.payout.id,
+        payout_status: payout.payout.status,
+      })
+      .eq("id", bookingId);
+
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("Payout creation failed:", error.message);
   }
 }
 
@@ -606,12 +595,16 @@ export async function POST(req: Request) {
     }
 
     if (
-      event.event === "payout.processing" ||
       event.event === "payout.processed" ||
+      event.event === "payout.reversed" ||
+      event.event === "payout.rejected" ||
       event.event === "payout.failed" ||
-      event.event === "payout.reversed"
+      event.event === "payout.queued" ||
+      event.event === "payout.pending" ||
+      event.event === "payout.initiated" ||
+      event.event === "payout.updated"
     ) {
-      await handlePayoutStatusUpdate(event);
+      await handlePayoutWebhook(event);
     }
 
     return NextResponse.json({ success: true });
@@ -683,4 +676,93 @@ async function createRazorpayInvoice(params: {
   }
 
   return data;
+}
+
+/* ----------------------------------
+   11. HANDLE PAYOUT WEBHOOK
+---------------------------------- */
+
+async function handlePayoutWebhook(event: any) {
+  const payout = event.payload?.payout?.entity;
+
+  if (!payout) return;
+
+  const payoutId = payout.id;
+  const payoutStatus = payout.status;
+
+  const { data: booking, error } = await supabase
+    .from("bookings")
+    .select(`
+      id,
+      event_name,
+      base_price,
+      razorpay_payment_id,
+      razorpay_order_id,
+      owner_commission_email_sent,
+      venue_id,
+      razorpay_payout_id
+    `)
+    .eq("razorpay_payout_id", payoutId)
+    .single();
+
+  if (error || !booking) {
+    console.log("Booking not found for payout:", payoutId);
+    return;
+  }
+
+  await supabase
+    .from("bookings")
+    .update({
+      payout_status: payoutStatus,
+      payout_processed_at:
+        event.event === "payout.processed" ? new Date().toISOString() : null,
+    })
+    .eq("id", booking.id);
+
+
+  if (booking.owner_commission_email_sent) return;
+
+  const venueOwner = await getVenueOwner(booking.venue_id);
+  if (!venueOwner) return;
+
+  const ownerEmail = venueOwner.payment_contact_email || venueOwner.email;
+  if (!ownerEmail) return;
+  if(event.event === "payout.processed") {
+    await sendMail({
+      to: ownerEmail,
+      subject: `Commission ${event.event} - Shifts Deal`,
+      html: venueCommisionSuccessEmail({
+        ownerName: venueOwner.name,
+        eventName: booking.event_name,
+        amount: Math.round(Number(booking.base_price) * 100),
+        razorpayPaymentId: booking.razorpay_payout_id,
+        razorpayOrderId: booking.razorpay_order_id,
+      }),
+    });
+    await supabase
+      .from("bookings")
+      .update({
+        owner_commission_email_sent: true,
+      })
+      .eq("id", booking.id);
+    }
+  if(event.event === "payout.reversed") {
+    await sendMail({
+      to: ownerEmail,
+      subject: `Commission Reversed - Shifts Deal`,
+      html: venueCommisionSuccessEmail({
+        ownerName: venueOwner.name,
+        eventName: booking.event_name,
+        amount: Math.round(Number(booking.base_price) * 100),
+        razorpayPaymentId: booking.razorpay_payout_id,
+        razorpayOrderId: booking.razorpay_order_id,
+      }),
+    });
+    await supabase
+      .from("bookings")
+      .update({
+        owner_commission_email_sent: true,
+      })
+      .eq("id", booking.id);
+  }
 }
