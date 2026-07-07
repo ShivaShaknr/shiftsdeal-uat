@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   deposit_amount DECIMAL(10,2) NOT NULL,
   balance_amount DECIMAL(10,2) NOT NULL,
   status TEXT CHECK (status IN ('pending', 'confirmed', 'cancelled', 'completed')) DEFAULT 'pending',
-  payment_status TEXT CHECK (payment_status IN ('pending', 'deposit_paid', 'fully_paid')) DEFAULT 'pending',
+  payment_status TEXT CHECK (payment_status IN ('pending', 'deposit_paid', 'fully_paid', 'expired')) DEFAULT 'pending',
   deposit_paid BOOLEAN DEFAULT FALSE,
   deposit_paid_at TIMESTAMP WITH TIME ZONE,
   balance_paid BOOLEAN DEFAULT FALSE,
