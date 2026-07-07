@@ -29,6 +29,7 @@ import {
   CheckCircle,
   XCircle,
   Pencil,
+  ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button, Card, Badge, Modal } from '@/components/ui';
@@ -46,6 +47,7 @@ export default function OwnerDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [venues, setVenues] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [paymentSettings, setPaymentSettings] = useState<any>(null);
   const [venueRequests, setVenueRequests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
@@ -87,6 +89,7 @@ export default function OwnerDashboardPage() {
         return;
       }
     }
+
   }, [user, role, authLoading, router]);
 
   useEffect(() => {
@@ -97,19 +100,22 @@ export default function OwnerDashboardPage() {
 
   const fetchData = async () => {
     if (!user) return;
-    
+    console.log('Fetching data for user:', user.id);
     setIsLoading(true);
     try {
-      const [venuesRes, bookingsRes, requestsRes] = await Promise.all([
+      const [venuesRes, bookingsRes, requestsRes , paymentSettingsRes] = await Promise.all([
         fetch(`/api/owner/venues?ownerId=${user.id}`),
         fetch(`/api/owner/bookings?ownerId=${user.id}`),
         fetch(`/api/venue-requests?ownerId=${user.id}`),
+        fetch(`/api/owner/payment-settings?userId=${user.id}`),
       ]);
 
       const venuesData = await venuesRes.json();
       const bookingsData = await bookingsRes.json();
       const requestsData = await requestsRes.json();
-
+      const paymentSettingsData = await paymentSettingsRes.json();
+      console.log('Payment settings API response:', paymentSettingsData);
+      setPaymentSettings(paymentSettingsData.data);
       console.log('Venues API response:', { venuesData, userId: user.id });
 
       if (venuesData.success) {
@@ -449,6 +455,16 @@ export default function OwnerDashboardPage() {
           </div>
         ) : (
           <>
+          {paymentSettings?.payment_method === null && (
+              <div className="flex items-center justify-between mb-4 bg-warning/10 p-4 rounded-lg">
+                <p className="text-sm text-foreground-muted">
+                  Make sure that you have added your <span className="font-bold">bank details</span> in the Account Settings. If not please add them to list your venues and start receiving payments.
+                </p>
+                <Link href="/owner-settings" className="text-primary hover:underline text-[12px]">
+                  <span className="flex items-center gap-1">Add Bank Details <ArrowRight className="w-3 h-3 text-primary" /></span>
+                </Link>
+              </div>
+            )}
             {activeTab === 'overview' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
