@@ -69,7 +69,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, notes } = body;
+    const { status, notes, approved_at } = body;
 
     if (!status || !['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
       return NextResponse.json(
@@ -88,6 +88,7 @@ export async function PATCH(
     const updateData: any = {
       status,
       updated_at: new Date().toISOString(),
+      approved_at: approved_at ? new Date(Number(approved_at)) : null,
     };
 
     if (notes) {
@@ -139,44 +140,6 @@ export async function PATCH(
         console.error('Booking cancellation email failed:', emailError);
       }
     }
-
-    // let paymentLink: any = null;
-
-    // if (status === "confirmed" && booking.payment_status === "pending") {
-    //   paymentLink = await razorpay.paymentLink.create({
-    //     amount: Math.round(Number(booking.total_amount) * 100),
-    //     currency: "INR",
-    //     accept_partial: false,
-    //     description: `Deposit payment for ${booking.event_name}`,
-    //     customer: {
-    //       name: booking.contact_name,
-    //       email: booking.contact_email,
-    //       contact: booking.contact_phone,
-    //     },
-    //     notify: {
-    //       sms: true,
-    //       email: true,
-    //     },
-    //     reminder_enable: true,
-    //     reference_id: booking.id,
-    //     notes: {
-    //       booking_id: booking.id,
-    //       venue_id: booking.venue_id,
-    //       renter_id: booking.renter_id,
-    //       payment_type: "deposit",
-    //     },
-    //   });
-
-    //   await supabaseAdmin
-    //     .from("bookings")
-    //     .update({
-    //       razorpay_payment_link_id: paymentLink.id,
-    //       razorpay_payment_link_url: paymentLink.short_url,
-    //       payment_status: "link_sent",
-    //       updated_at: new Date().toISOString(),
-    //     })
-    //     .eq("id", booking.id);
-    // }
 
     // Delete KYC files after approve/reject (when status changes from pending)
     if (existingBooking && (status === 'confirmed' || status === 'cancelled')) {

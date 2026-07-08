@@ -11,27 +11,37 @@ const supabase = createClient(
 
 cron.schedule("* * * * *", async () => {
     try {
-      const expireVenuePaymentTiming = Number(process.env.NEXT_PUBLIC_EXPIRE_VENUE_PAYMENT_TIMING || 1440);
-      const currentTimeMinusOneMinute = new Date(Date.now() - expireVenuePaymentTiming * 60 * 1000).toISOString();
-  
+      const expireVeneueApprovalTiming = Number(process.env.NEXT_PUBLIC_EXPIRE_VENUE_APPROVAL_TIMING);
+      const expireVeneuePaymentTiming = Number(process.env.NEXT_PUBLIC_EXPIRE_VENUE_PAYMENT_TIMING);
+      const currentTimeMinusOneMinuteApproval = new Date(Date.now() - expireVeneueApprovalTiming * 60 * 1000).toISOString();
+      const currentTimeMinusOneMinutePayment = new Date(Date.now() - expireVeneuePaymentTiming * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from("bookings")
-        .update({ status: "cancelled", payment_status: "expired" })
+        .update({ status: "expired", payment_status: "expired" })
         .eq("status", "pending")
-        .lte("created_at", currentTimeMinusOneMinute)
+        .lte("created_at", currentTimeMinusOneMinuteApproval)
         .select("id, status, payment_status, created_at, updated_at");
-      if (error) {
-        console.error("Cron update error:", error);
-        return;
+        data?.forEach((booking) => {
+          console.log(
+            `Expired booking ${booking.id} | created: ${booking.created_at} | expired: ${booking.updated_at}`
+          );
+        });
+        const { data: paymentData} = await supabase
+          .from("bookings")
+          .update({ payment_status: "expired" , status: "expired" })
+          .eq("status", "confirmed")
+          .lte("approved_at", currentTimeMinusOneMinutePayment)
+          .select("id, status, payment_status, created_at, updated_at");
+          paymentData?.forEach((booking) => {
+            console.log(
+              `Expired payment booking ${booking.id} | created: ${booking.created_at} | expired: ${booking.updated_at}`
+            );
+          });
+        console.log(`Expired ${data?.length} bookings`);
+        console.log(`Expired ${paymentData?.length} payment bookings`);
+      } catch (error) {
+        console.error("Cron error:", error);
       }
-      data?.forEach((booking) => {
-        console.log(
-          `Cancelled booking ${booking.id} | created: ${booking.created_at} | cancelled: ${booking.updated_at}`
-        );
-      });
-    } catch (error) {
-      console.error("Cron error:", error);
-    }
   });
 
 console.log("cron started");

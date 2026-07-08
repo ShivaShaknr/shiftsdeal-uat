@@ -90,6 +90,7 @@ export async function GET(request: NextRequest) {
     let confirmed = 0;
     let completed = 0;
     let successfulPayments = 0;
+    let expiredBookings = 0;
     let total_venue_booked = bookings?.length || 0;
     
     for(let i = 0 ; i < bookings?.length; i++) {
@@ -98,6 +99,7 @@ export async function GET(request: NextRequest) {
       if(booking.status === 'pending') {pending++;}
       if(booking.status === 'confirmed') {confirmed++;}
       if(booking.status === 'completed') {completed++;}
+      if(booking.status === 'expired') {expiredBookings++;}
       if(booking.total_amount > 0 && booking.payment_status === 'fully_paid') {totalRevenue += booking.total_amount;}
       if(booking.total_amount > 0 && booking.status === 'completed' && booking.payment_status === 'fully_paid') {commisionEarned += booking.platform_fee;}
       if(booking.total_amount > 0 && booking.status === 'completed' && booking.payment_status === 'fully_paid') {totalSettlement += booking.base_price;}
@@ -112,6 +114,7 @@ export async function GET(request: NextRequest) {
       confirmed_bookings: confirmed,
       completed_bookings: completed,
       successful_payments: successfulPayments,
+      expired_bookings: expiredBookings,
     }
 
     return NextResponse.json({

@@ -133,8 +133,9 @@ export interface Database {
           total_amount: number;
           deposit_amount: number;
           balance_amount: number;
-          status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+          status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'expired';
           payment_status: 'pending' | 'deposit_paid' | 'fully_paid' | 'expired';
+          approved_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -162,8 +163,9 @@ export interface Database {
           total_amount: number;
           deposit_amount: number;
           balance_amount: number;
-          status?: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+          status?: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'expired';
           payment_status?: 'pending' | 'deposit_paid' | 'fully_paid' | 'expired';
+          approved_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -190,8 +192,9 @@ export interface Database {
           total_amount?: number;
           deposit_amount?: number;
           balance_amount?: number;
-          status?: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+          status?: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'expired';
           payment_status?: 'pending' | 'deposit_paid' | 'fully_paid' | 'expired';
+          approved_at?: string | null;
           updated_at?: string;
         };
       };

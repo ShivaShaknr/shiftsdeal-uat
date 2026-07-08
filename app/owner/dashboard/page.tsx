@@ -280,7 +280,7 @@ export default function OwnerDashboardPage() {
       const response = await fetch(`/api/bookings/${bookingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'confirmed' }),
+        body: JSON.stringify({ status: 'confirmed',approved_at: Date.now().toString() }),
       });
 
       if (response.ok) {
@@ -352,7 +352,8 @@ export default function OwnerDashboardPage() {
 
   const pendingBookings = bookings.filter(b => b.status === 'pending');
   const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
-  const totalRevenue = confirmedBookings.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0);
+  const completedBookings = bookings.filter(b => b.status === 'completed');
+  const totalRevenue = completedBookings.reduce((sum, b) => sum + (parseFloat(b.base_price) || 0), 0);
   const pendingVenueRequests = venueRequests.filter(r => r.status === 'pending');
 
   const getStatusColor = (status: string) => {
@@ -693,23 +694,47 @@ export default function OwnerDashboardPage() {
                           <tbody>
                             {bookings.map((booking) => (
                               <tr key={booking.id} className="border-b border-border/50 hover:bg-background-light">
-                                <td className="py-3 px-4">
-                                  <p className="font-medium text-foreground">{booking.event_name}</p>
-                                  <p className="text-xs text-foreground-muted">{booking.event_type}</p>
+                                <td className="py-1 px-4">
+                                  <p className="font-medium text-foreground text-[14px]">{booking.event_name}</p>
+                                  <p className="text-[12px] text-foreground-muted">{booking.event_type}</p>
                                 </td>
-                                <td className="py-3 px-4 text-foreground-muted">{booking.venue?.name || '-'}</td>
-                                <td className="py-3 px-4 text-foreground-muted">{booking.date}</td>
-                                <td className="py-3 px-4 text-foreground-muted">{booking.contact_name}</td>
-                                <td className="py-3 px-4 text-foreground">{formatCurrency(booking.total_amount)}</td>
-                                <td className="py-3 px-4"><Badge variant={getStatusColor(booking.status) as any}>{booking.status}</Badge></td>
-                                <td className="py-3 px-4">
-                                  {booking.status === 'confirmed' && (
-                                    <>
-                                      <Badge variant={booking.deposit_paid ? 'success' : booking.deposit_expired ? 'error' : 'warning'}>
-                                        {booking.deposit_paid ? '✓ Deposit Paid' : booking.deposit_expired ? '⚠️ EXPIRED' : 'Awaiting Payment'}
-                                      </Badge>
-                                    </>
-                                  )}
+                                <td className="py-2 px-4 text-foreground-muted text-[14px]">{booking.venue?.name || '-'}</td>
+                                <td className="py-2 px-4 text-foreground-muted text-[14px]">{booking.date}</td>
+                                <td className="py-2 px-4 text-foreground-muted text-[14px]">{booking.contact_name}</td>
+                                <td className="py-2 px-4 text-foreground text-[14px]">{formatCurrency(booking.total_amount)}</td>
+                                <td className="py-2 px-4">
+                                    <span
+                                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                                        booking.status === "completed"
+                                          ? "bg-green-100 text-green-700"
+                                          : booking.payment_status === "pending"
+                                          ? "bg-yellow-100 text-yellow-700"
+                                          : "bg-red-100 text-red-700"
+                                      }`}
+                                    >
+                                      {booking.status === "completed"
+                                        ? "Completed"
+                                        : booking.status === "confirmed"
+                                        ? "Awaiting Payment"
+                                        : "Expired"}
+                                    </span>
+                                </td>
+                                <td className="py-2 px-4">
+                                    <span
+                                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                                        booking.payment_status === "fully_paid"
+                                          ? "bg-green-100 text-green-700"
+                                          : booking.payment_status === "pending"
+                                          ? "bg-yellow-100 text-yellow-700"
+                                          : "bg-red-100 text-red-700"
+                                      }`}
+                                    >
+                                      {booking.payment_status === "fully_paid"
+                                        ? "Full Payment Received"
+                                        : booking.payment_status === "pending"
+                                        ? "Pending"
+                                        : "Expired"}
+                                    </span>
                                 </td>
                                 <td className="py-3 px-4 text-right">
                                   <div className="flex items-center justify-end gap-1">
@@ -787,176 +812,224 @@ export default function OwnerDashboardPage() {
         )}
       </div>
 
-      <Modal isOpen={showBookingModal} onClose={() => { setShowBookingModal(false); setSelectedBooking(null); }} title="Booking Details" size="lg">
+      <Modal
+        isOpen={showBookingModal}
+        onClose={() => {
+          setShowBookingModal(false);
+          setSelectedBooking(null);
+        }}
+        title="Booking Details"
+        size="lg"
+      >
         {selectedBooking && (
-          <div className="p-6 space-y-6">
-            <div className={cn('p-4 rounded-xl', selectedBooking.status === 'pending' && 'bg-warning/10', selectedBooking.status === 'confirmed' && 'bg-success/10', selectedBooking.status === 'cancelled' && 'bg-error/10')}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Badge variant={getStatusColor(selectedBooking.status) as any} className="mb-2">{selectedBooking.status.toUpperCase()}</Badge>
-                  <h3 className="font-semibold text-foreground">{selectedBooking.event_name}</h3>
-                  <p className="text-sm text-foreground-muted">{selectedBooking.event_type}</p>
-                </div>
-                <p className="text-2xl font-bold text-primary">{formatCurrency(selectedBooking.total_amount)}</p>
-              </div>
-            </div>
+          <div className="p-6 space-y-5">
+            {/* Header Card */}
+            <div className="rounded-2xl border border-border bg-background-light p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                        selectedBooking.status === "completed"
+                          ? "bg-green-100 text-green-700"
+                          : selectedBooking.status === "confirmed"
+                          ? "bg-blue-100 text-blue-700"
+                          : selectedBooking.status === "pending"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {selectedBooking.status === "completed"
+                        ? "Completed"
+                        : selectedBooking.status === "confirmed"
+                        ? "Confirmed"
+                        : selectedBooking.status === "pending"
+                        ? "Pending"
+                        : "Cancelled"}
+                    </span>
 
-            {/* Payment Status Banner - Shows for confirmed bookings */}
-            {selectedBooking.status === 'confirmed' && (
-              <div className={cn(
-                'p-4 rounded-xl border',
-                selectedBooking.deposit_paid 
-                  ? 'bg-success/10 border-success/30' 
-                  : selectedBooking.deposit_expired
-                  ? 'bg-error/10 border-error/30'
-                  : 'bg-warning/10 border-warning/30'
-              )}>
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center',
-                    selectedBooking.deposit_paid ? 'bg-success/20' : selectedBooking.deposit_expired ? 'bg-error/20' : 'bg-warning/20'
-                  )}>
-                    {selectedBooking.deposit_paid ? (
-                      <Check className="w-5 h-5 text-success" />
-                    ) : selectedBooking.deposit_expired ? (
-                      <AlertCircle className="w-5 h-5 text-error" />
-                    ) : (
-                      <Clock className="w-5 h-5 text-warning" />
-                    )}
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                        selectedBooking.payment_status === "fully_paid"
+                          ? "bg-green-100 text-green-700"
+                          : selectedBooking.payment_status === "pending"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {selectedBooking.payment_status === "fully_paid"
+                        ? "Full Payment Received"
+                        : selectedBooking.payment_status === "pending"
+                        ? "Waiting for Payment"
+                        : "Payment Expired"}
+                    </span>
                   </div>
+
                   <div>
-                    <p className={cn(
-                      'font-semibold',
-                      selectedBooking.deposit_paid ? 'text-success' : selectedBooking.deposit_expired ? 'text-error' : 'text-warning'
-                    )}>
-                      {selectedBooking.deposit_paid ? 'Deposit Payment Received!' : selectedBooking.deposit_expired ? 'Payment Expired!' : 'Awaiting Deposit Payment'}
-                    </p>
+                    <h3 className="text-lg font-bold text-foreground">
+                      {selectedBooking.event_name}
+                    </h3>
                     <p className="text-sm text-foreground-muted">
-                      {selectedBooking.deposit_paid 
-                        ? `₹${selectedBooking.deposit_amount} received on ${new Date(selectedBooking.deposit_paid_at).toLocaleDateString('en-IN')}`
-                        : selectedBooking.deposit_expired
-                        ? `24+ hours passed without payment. Contact admin to cancel.`
-                        : `Renter needs to pay ₹${selectedBooking.deposit_amount} deposit`
-                      }
+                      {selectedBooking.event_type}
                     </p>
                   </div>
                 </div>
-                {selectedBooking.balance_paid && (
-                  <div className="mt-3 pt-3 border-t border-success/20">
-                    <p className="text-sm text-success">✓ Full payment received (Balance: ₹{selectedBooking.balance_amount})</p>
-                  </div>
-                )}
-              </div>
-            )}
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div><label className="text-sm text-foreground-muted">Venue</label><p className="font-medium text-foreground">{selectedBooking.venue?.name || 'Unknown'}</p></div>
-              <div><label className="text-sm text-foreground-muted">Date</label><p className="font-medium text-foreground">{selectedBooking.date}</p></div>
-              <div><label className="text-sm text-foreground-muted">Time</label><p className="font-medium text-foreground">{selectedBooking.start_time} - {selectedBooking.end_time}</p></div>
-              <div><label className="text-sm text-foreground-muted">Attendees</label><p className="font-medium text-foreground">{selectedBooking.attendees} people</p></div>
-            </div>
-            <div className="border-t border-border pt-4">
-              <h4 className="font-medium text-foreground mb-3">Contact Information</h4>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="flex items-center gap-2"><User className="w-4 h-4 text-foreground-muted" /><span className="text-foreground">{selectedBooking.contact_name}</span></div>
-                <div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-foreground-muted" /><span className="text-foreground">{selectedBooking.organization_name}</span></div>
-                <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-foreground-muted" /><span className="text-foreground">{selectedBooking.contact_email}</span></div>
-                <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-foreground-muted" /><span className="text-foreground">{selectedBooking.contact_phone}</span></div>
-              </div>
-            </div>
-            {selectedBooking.special_requirements && (
-              <div className="border-t border-border pt-4">
-                <h4 className="font-medium text-foreground mb-2">Special Requirements</h4>
-                <p className="text-foreground-muted">{selectedBooking.special_requirements}</p>
-              </div>
-            )}
-            <div className="border-t border-border pt-4">
-              <h4 className="font-medium text-foreground mb-3 flex items-center gap-2"><FileText className="w-4 h-4" />Verification Documents</h4>
-              <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                <div><label className="text-sm text-foreground-muted">Document Type</label><p className="font-medium text-foreground capitalize">{selectedBooking.kyc_document_type}</p></div>
-                <div><label className="text-sm text-foreground-muted">Contract Signed</label><p className="font-medium text-foreground">{selectedBooking.signature ? 'Yes' : 'No'}</p></div>
-              </div>
-              
-              {/* KYC Document Preview */}
-              {selectedBooking.kyc_document_url && selectedBooking.kyc_document_url !== 'pending' && selectedBooking.kyc_document_url !== 'deleted' && (
-                <div className="mb-4">
-                  <label className="text-sm text-foreground-muted block mb-2">ID Document ({selectedBooking.kyc_document_type})</label>
-                  <div className="border border-border rounded-lg overflow-hidden bg-background-light">
-                    <img 
-                      src={selectedBooking.kyc_document_url} 
-                      alt="KYC Document" 
-                      className="w-full max-h-64 object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <p className="hidden text-center py-4 text-foreground-muted">Unable to load document</p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Face Photo Preview */}
-              {selectedBooking.kyc_face_photo_url && selectedBooking.kyc_face_photo_url !== 'pending' && selectedBooking.kyc_face_photo_url !== 'deleted' && (
-                <div className="mb-4">
-                  <label className="text-sm text-foreground-muted block mb-2">Face Verification Photo</label>
-                  <div className="border border-border rounded-lg overflow-hidden bg-background-light">
-                    <img 
-                      src={selectedBooking.kyc_face_photo_url} 
-                      alt="Face Photo" 
-                      className="w-full max-h-64 object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <p className="hidden text-center py-4 text-foreground-muted">Unable to load photo</p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Warning about document deletion */}
-              {selectedBooking.status === 'pending' && (
-                <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 mt-3">
-                  <p className="text-sm text-warning flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" />
-                    Documents will be automatically deleted after you approve or reject this booking.
+                <div className="text-right">
+                  <p className="text-xs text-foreground-muted">Total Amount</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {formatCurrency(selectedBooking.total_amount)}
                   </p>
                 </div>
-              )}
-              
-              {(selectedBooking.kyc_document_url === 'deleted' || selectedBooking.kyc_face_photo_url === 'deleted') && (
-                <div className="bg-background-light border border-border rounded-lg p-3 mt-3">
+              </div>
+            </div>
+
+            {/* Booking Info */}
+            <div className="rounded-2xl border border-border p-5">
+              <h4 className="mb-4 text-sm font-semibold text-foreground">
+                Booking Information
+              </h4>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-foreground-muted">Venue</p>
+                  <p className="font-medium text-foreground">
+                    {selectedBooking.venue?.name || "Unknown"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-foreground-muted">Date</p>
+                  <p className="font-medium text-foreground">{selectedBooking.date}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-foreground-muted">Time</p>
+                  <p className="font-medium text-foreground">
+                    {selectedBooking.start_time} - {selectedBooking.end_time}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-foreground-muted">Attendees</p>
+                  <p className="font-medium text-foreground">
+                    {selectedBooking.attendees} people
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Info */}
+            <div className="rounded-2xl border border-border p-5">
+              <h4 className="mb-4 text-sm font-semibold text-foreground">
+                Contact Information
+              </h4>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex items-center gap-3">
+                  <User className="h-4 w-4 text-foreground-muted" />
+                  <span className="text-sm text-foreground">
+                    {selectedBooking.contact_name || "-"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Building2 className="h-4 w-4 text-foreground-muted" />
+                  <span className="text-sm text-foreground">
+                    {selectedBooking.organization_name || "-"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-foreground-muted" />
+                  <span className="text-sm text-foreground">
+                    {selectedBooking.contact_email || "-"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-foreground-muted" />
+                  <span className="text-sm text-foreground">
+                    {selectedBooking.contact_phone || "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Verification */}
+            <div className="rounded-2xl border border-border p-5">
+              <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+                <FileText className="h-4 w-4" />
+                Verification Documents
+              </h4>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-foreground-muted">Document Type</p>
+                  <p className="font-medium capitalize text-foreground">
+                    {selectedBooking.kyc_document_type || "N/A"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-foreground-muted">Contract Signed</p>
+                  <p className="font-medium text-foreground">
+                    {selectedBooking.signature ? "Yes" : "No"}
+                  </p>
+                </div>
+              </div>
+
+              {(selectedBooking.kyc_document_url === "deleted" ||
+                selectedBooking.kyc_face_photo_url === "deleted") && (
+                <div className="mt-4 rounded-xl border border-border bg-background-light px-4 py-3">
                   <p className="text-sm text-foreground-muted">
                     KYC documents have been deleted as this booking has been processed.
                   </p>
                 </div>
               )}
             </div>
-            {selectedBooking.status === 'pending' && (
-              <div className="flex gap-3 pt-4 border-t border-border">
-                <Button variant="outline" className="flex-1 text-error hover:bg-error/10" onClick={() => handleRejectBooking(selectedBooking.id)} disabled={actionLoading}>
-                  <X className="w-4 h-4 mr-2" />Reject
+
+            {/* Actions */}
+            {selectedBooking.status === "pending" && (
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="text-error hover:bg-error/10"
+                  onClick={() => handleRejectBooking(selectedBooking.id)}
+                  disabled={actionLoading}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Reject
                 </Button>
-                <Button className="flex-1" onClick={() => handleApproveBooking(selectedBooking.id)} disabled={actionLoading}>
-                  <Check className="w-4 h-4 mr-2" />Approve
+
+                <Button
+                  onClick={() => handleApproveBooking(selectedBooking.id)}
+                  disabled={actionLoading}
+                >
+                  <Check className="mr-2 h-4 w-4" />
+                  Approve
                 </Button>
               </div>
             )}
-            <div className="flex gap-3 pt-4 border-t border-border mt-4">
-              <Button 
-                variant="outline" 
-                className="flex-1 text-error hover:bg-error/10" 
-                onClick={() => handleDeleteBooking(selectedBooking.id)} 
-                disabled={deletingId === selectedBooking.id}
-              >
-                {deletingId === selectedBooking.id ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deleting...</>
-                ) : (
-                  <><Trash2 className="w-4 h-4 mr-2" />Delete Booking</>
-                )}
-              </Button>
-            </div>
+
+            <Button
+              variant="outline"
+              className="w-full border-error/40 text-error hover:bg-error/10"
+              onClick={() => handleDeleteBooking(selectedBooking.id)}
+              disabled={deletingId === selectedBooking.id}
+            >
+              {deletingId === selectedBooking.id ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Booking
+                </>
+              )}
+            </Button>
           </div>
         )}
       </Modal>

@@ -64,6 +64,7 @@ interface Stats {
   confirmed_bookings: number;
   completed_bookings: number;
   successful_payments: number;
+  expired_bookings: number;
 }
 
 export default function AdminDashboard() {
@@ -235,6 +236,11 @@ export default function AdminDashboard() {
         className: 'border-amber-500/30 bg-amber-500/15 text-amber-400',
         dot: 'bg-amber-400',
       },
+      expired: {
+        label: 'Expired',
+        className: 'border-red-500/30 bg-red-500/15 text-red-400',
+        dot: 'bg-red-400',
+      },
     } as const;
 
     const item =
@@ -379,7 +385,7 @@ export default function AdminDashboard() {
               { label: 'Pending Bookings', value: stats.pending_bookings, color: 'text-foreground', currency: false },
               { label: 'Confirmed Bookings', value: stats.confirmed_bookings, color: 'text-foreground', currency: false },
               { label: 'Completed Bookings', value: stats.completed_bookings, color: 'text-foreground', currency: false },
-              { label: 'Expired Bookings', value: stats.successful_payments, color: 'text-foreground', currency: false },
+              { label: 'Expired Bookings', value: stats.expired_bookings, color: 'text-foreground', currency: false },
             ].map(stat => (
               <div key={stat.label} className="bg-background-card border border-border rounded-xl p-4 flex flex-col gap-2">
                 <p className="text-[10px] text-foreground-muted">{stat.label}</p>
@@ -525,7 +531,7 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-background-card border border-border rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-border flex items-center justify-between">
-              <h2 className="text-lg font-bold text-foreground">Booking Details</h2>
+              <h2 className="text-xl font-bold text-foreground">Booking Details</h2>
               <button
                 onClick={() => setSelectedBooking(null)}
                 className="p-2 hover:bg-background-light rounded-lg text-foreground cursor-pointer"
