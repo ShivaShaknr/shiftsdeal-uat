@@ -135,6 +135,7 @@ export interface Database {
           balance_amount: number;
           status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'expired';
           payment_status: 'pending' | 'deposit_paid' | 'fully_paid' | 'expired';
+          payment_inprogress?: boolean;
           approved_at: string | null;
           created_at: string;
           updated_at: string;
@@ -165,6 +166,7 @@ export interface Database {
           balance_amount: number;
           status?: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'expired';
           payment_status?: 'pending' | 'deposit_paid' | 'fully_paid' | 'expired';
+          payment_inprogress?: boolean;
           approved_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -194,6 +196,7 @@ export interface Database {
           balance_amount?: number;
           status?: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'expired';
           payment_status?: 'pending' | 'deposit_paid' | 'fully_paid' | 'expired';
+          payment_inprogress?: boolean;
           approved_at?: string | null;
           updated_at?: string;
         };

@@ -15,6 +15,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   },
 });
 
+
 // Helper to extract file path from Supabase Storage URL
 function extractFilePath(url: string, bucket: string): string | null {
   if (!url || url === 'pending') return null;
@@ -77,7 +78,7 @@ export async function PATCH(
         { status: 400 }
       );
     }
-
+    
     // First, get the booking to retrieve KYC file paths
     const { data: existingBooking } = await supabaseAdmin
       .from('bookings')

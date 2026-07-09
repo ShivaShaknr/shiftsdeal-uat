@@ -625,6 +625,39 @@ export async function POST(req: Request) {
 
     if (event.event === "payment.captured") {
       await handlePaymentCaptured(event);
+
+      const bookingId = event.payload?.payment?.entity?.notes?.booking_id;
+      console.log("payment booking_id ==============", bookingId);
+
+      const { data: bookingData }: any = await supabase
+        .from("bookings")
+        .select("id, event_name, date, venue_id, start_time, end_time, status, payment_status, total_amount, contact_name, contact_email")
+        .eq("id", bookingId)
+        .single();
+
+      console.log("payment booking details ==============", bookingData);
+      // 2. Expire/cancel all duplicate bookings for same venue/date/time except approved booking
+      const { data: duplicateBookings, error: duplicateError } = await supabase
+      .from("bookings")
+      .update({
+        status: "expired",
+        payment_status: "expired",
+        updated_at: new Date().toISOString(),
+        payment_inprogress: false,
+      })
+      .eq("venue_id", bookingData?.venue_id)
+      .eq("date", bookingData?.date)
+      .lt("start_time", bookingData?.end_time)
+      .gt("end_time", bookingData?.start_time)
+      .neq("id", bookingId)
+      .in("status", ["pending", "confirmed"])
+      .select("id, event_name, date, venue_id, start_time, end_time, status, payment_status");
+
+      if (duplicateError) {
+      console.error("Duplicate booking update error:", duplicateError);
+      } else {
+      console.log("Cancelled duplicate bookings >>>>>>>>>>>>>>>>>>", duplicateBookings);
+      }
     }
 
     if (

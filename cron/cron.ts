@@ -42,6 +42,6 @@ cron.schedule("* * * * *", async () => {
       } catch (error) {
         console.error("Cron error:", error);
       }
-  });
+});
 
 console.log("cron started");

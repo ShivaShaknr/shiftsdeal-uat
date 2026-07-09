@@ -375,6 +375,39 @@ export default function OwnerDashboardPage() {
     { label: 'Active Venues', value: venues.length.toString(), icon: Building2 },
   ];
 
+  const getBookingStatusStyle = (status?: string) => {
+    const styles: Record<string, { label: string; className: string }> = {
+      completed: {
+        label: "Completed",
+        className: "bg-green-100 text-green-700 border border-green-200 text-[12px] font-medium px-2 py-1 rounded-full",
+      },
+      confirmed: {
+        label: "Awaiting Payment",
+        className: "bg-blue-100 text-blue-700 border border-blue-200 text-[12px] font-medium px-2 py-1 rounded-full",
+      },
+      pending: {
+        label: "Pending",
+        className: "bg-yellow-100 text-yellow-700 border border-yellow-200 text-[12px] font-medium px-2 py-1 rounded-full",
+      },
+      expired: {
+        label: "Expired",
+        className: "bg-red-100 text-red-700 border border-red-200 text-[12px] font-medium px-2 py-1 rounded-full",
+      },
+      cancelled: {
+        label: "Cancelled",
+        className: "bg-gray-100 text-gray-700 border border-gray-200 text-[12px] font-medium px-2 py-1 rounded-full",
+      },
+    };
+  
+    return (
+      styles[status || ""] || {
+        label: "Unknown",
+        className: "bg-gray-100 text-gray-500 border border-gray-200",
+      }
+    );
+  };
+  
+
   // Show loading while checking auth
   if (authLoading || (!user && isLoading)) {
     return (
@@ -704,19 +737,9 @@ export default function OwnerDashboardPage() {
                                 <td className="py-2 px-4 text-foreground text-[14px]">{formatCurrency(booking.total_amount)}</td>
                                 <td className="py-2 px-4">
                                     <span
-                                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                                        booking.status === "completed"
-                                          ? "bg-green-100 text-green-700"
-                                          : booking.payment_status === "pending"
-                                          ? "bg-yellow-100 text-yellow-700"
-                                          : "bg-red-100 text-red-700"
-                                      }`}
+                                      className={getBookingStatusStyle(booking.status).className}
                                     >
-                                      {booking.status === "completed"
-                                        ? "Completed"
-                                        : booking.status === "confirmed"
-                                        ? "Awaiting Payment"
-                                        : "Expired"}
+                                      {getBookingStatusStyle(booking.status).label}
                                     </span>
                                 </td>
                                 <td className="py-2 px-4">

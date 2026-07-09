@@ -282,7 +282,7 @@ export default function MyBookingsPage() {
       </div>
     );
   }
-
+  
   const handlePayNow = async (bookingId: string) => {
     const scriptLoaded = await loadRazorpayScript();
   
@@ -336,6 +336,11 @@ export default function MyBookingsPage() {
           alert(verifyResult.error || "Payment verification failed");
         }
       },
+      modal: {
+        ondismiss: async function () {
+          await fetch(`/api/bookings/${bookingId}/pay`, { method: "PATCH" });
+        },
+      },
   
       theme: {
         color: "#28282B",
@@ -355,6 +360,41 @@ export default function MyBookingsPage() {
       document.body.appendChild(script);
     });
   };
+
+  const getStatusTagClass = (status: any) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-100 text-green-700 border-green-200";
+      case "confirmed":
+        return "bg-blue-100 text-blue-700 border-blue-200";
+      case "pending":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      case "cancelled":
+        return "bg-red-100 text-red-700 border-red-200";
+      case "expired":
+        return "bg-red-100 text-red-700 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-200";
+    }
+  };
+  
+  const getStatusLabel = (status: any) => {
+    switch (status) {
+      case "completed":
+        return "Completed";
+      case "confirmed":
+        return "Awaiting Payment";
+      case "pending":
+        return "Pending";
+      case "cancelled":
+        return "Cancelled";
+      case "expired":
+        return "Expired";
+      default:
+        return "Unknown";
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background py-8">
@@ -433,26 +473,30 @@ export default function MyBookingsPage() {
                     <div className="flex-1 p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h3 className="font-semibold text-foreground">
+                          <h3 className="font-semibold text-foreground text-[18px]">
                             {booking.venueDetails?.name || 'Venue'}
                           </h3>
-                          <p className="text-sm text-foreground-muted flex items-center gap-1">
+                          <p className="text-sm text-foreground-muted flex items-center gap-1 capitalize text-[12px]">
                             <MapPin className="w-3 h-3" />
                             {booking.venueDetails?.address?.city || '—'}
                           </p>
                         </div>
-                        <Badge variant={getStatusVariant(booking.status) as any}>
-                          {booking.status}
-                        </Badge>
+                        <span
+                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${getStatusTagClass(
+                              booking.status
+                            )}`}
+                          >
+                            {getStatusLabel(booking.status)}
+                        </span>
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-4">
-                        <div>
-                          <p className="text-foreground-muted flex items-center gap-1">
+                        <div className='flex flex-col gap-2'>
+                          <p className="text-foreground-muted flex items-center gap-2 text-[14px] capitalize">
                             <Calendar className="w-3 h-3" />
                             Date
                           </p>
-                          <p className="text-foreground font-medium">
+                          <p className="text-foreground font-medium text-[14px]">
                             {new Date(booking.date).toLocaleDateString('en-IN', {
                               day: 'numeric',
                               month: 'short',
@@ -483,6 +527,7 @@ export default function MyBookingsPage() {
                           </p>
                         </div>
                       </div>
+
                       {booking.status === 'pending' && (
                         <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-4">
                          <div className="flex items-center gap-2 text-warning">
@@ -491,6 +536,7 @@ export default function MyBookingsPage() {
                          </div>
                         </div>
                       )}
+
                       {booking.status === 'confirmed' && booking.payment_status === 'fully_paid' && (
                          <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
                          <div className="flex items-start gap-3">
@@ -533,6 +579,7 @@ export default function MyBookingsPage() {
                          </div>
                        </div>
                       )}
+
                       {booking.status === 'confirmed' && booking.payment_status === 'pending' && (
                         <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
                          <div className="flex items-start gap-3">
@@ -629,6 +676,7 @@ export default function MyBookingsPage() {
                          </div>
                         </div>
                       )}
+
                       {booking.status === 'completed' && (
                         <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
                           <div className="flex items-start gap-3">
@@ -646,6 +694,7 @@ export default function MyBookingsPage() {
                           </div>
                         </div>
                       )}
+
                       {booking.status === 'cancelled' && (
                         <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
                         <div className="flex items-start gap-3">
@@ -678,16 +727,33 @@ export default function MyBookingsPage() {
                               Rate
                             </Button>
                           )}
-                          {booking.status === 'confirmed' && booking.payment_status === 'pending' && (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              leftIcon={<CreditCard className="w-4 h-4" />}
-                              onClick={() => handlePayNow(booking._id)}
-                              className='cursor-pointer'
-                            >
-                              Pay Now
-                            </Button>
+ 
+                          {booking.status === "confirmed" && booking.payment_status === "pending" && (
+                            <div className="flex flex-col items-start gap-1">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                leftIcon={<CreditCard className="w-4 h-4" />}
+                                onClick={() => {
+                                  if (!booking.payment_inprogress) {
+                                    handlePayNow(booking._id);
+                                  }
+                                }}
+                                disabled={booking.payment_inprogress}
+                                className={
+                                  booking.payment_inprogress
+                                    ? "cursor-not-allowed opacity-60"
+                                    : "cursor-pointer"
+                                }
+                              >
+                                Pay Now
+                              </Button>
+                              {booking.payment_inprogress && (
+                                <p className="text-xs text-foreground-muted max-w-[220px]">
+                                  Another renter is paying for this slot. Please try again shortly.
+                                </p>
+                              )}
+                            </div>
                           )}
                           <Button
                             variant="ghost"

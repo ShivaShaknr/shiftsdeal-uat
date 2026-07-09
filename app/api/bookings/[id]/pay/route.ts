@@ -12,6 +12,42 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+export async function PATCH(
+  _req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+
+    const { data: bookingData } = await supabase
+      .from("bookings")
+      .select("venue_id, date, start_time, end_time")
+      .eq("id", id)
+      .single();
+
+    if (!bookingData) {
+      return NextResponse.json({ success: false, error: "Booking not found" }, { status: 404 });
+    }
+
+    await supabase
+      .from("bookings")
+      .update({
+        payment_inprogress: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("venue_id", bookingData.venue_id)
+      .eq("date", bookingData.date)
+      .lt("start_time", bookingData.end_time)
+      .gt("end_time", bookingData.start_time)
+      .neq("id", id)
+      .in("status", ["pending", "confirmed"]);
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 export async function POST(
   req: Request,
   context: { params: Promise<{ id: string }> }
@@ -36,6 +72,19 @@ export async function POST(
         booking_id: bookingId,
       },
     });
+    await supabase
+      .from("bookings")
+      .update({
+        payment_inprogress: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("venue_id", bookingData?.venue_id)
+      .eq("date", bookingData?.date)
+      .lt("start_time", bookingData?.end_time)
+      .gt("end_time", bookingData?.start_time)
+      .neq("id", bookingId)
+      .in("status", ["pending", "confirmed"])
+      .select("id, event_name, date, venue_id, start_time, end_time, status, payment_status, payment_inprogress");
 
     return NextResponse.json({
       success: true,
