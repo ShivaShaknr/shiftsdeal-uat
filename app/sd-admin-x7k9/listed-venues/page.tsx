@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatCurrency, cn } from '@/lib/utils';
 import AdminHeader from '@/components/layout/AdminHeader';
@@ -56,6 +56,67 @@ interface Stats {
   available: number;
   hidden: number;
   maintenance: number;
+}
+
+function FilterDropdown({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? value;
+
+  return (
+    <div ref={ref} className={cn('relative', open && 'z-50')}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background/50 py-2.5 pl-3 pr-3 text-sm text-foreground transition-colors hover:border-border-hover focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15"
+      >
+        <span className="truncate text-left">{selectedLabel}</span>
+        <span className={cn('shrink-0 text-foreground-muted transition-transform', open && 'rotate-180')}>
+          <Icons.ChevronDown />
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute z-[100] mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-border bg-background-card py-1 shadow-2xl">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+              className={cn(
+                'w-full px-3 py-2 text-left text-sm transition-colors hover:bg-background-light',
+                value === option.value ? 'bg-primary/10 font-medium text-primary' : 'text-foreground'
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AdminVenuesListPage() {
@@ -266,11 +327,11 @@ export default function AdminVenuesListPage() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      available: 'bg-primary/20 text-primary',
-      hidden: 'bg-yellow-500/20 text-yellow-400',
-      maintenance: 'bg-orange-500/20 text-orange-400',
+      available: 'bg-green-600 text-white border border-green-500/30',
+      hidden: 'bg-yellow-600 text-white border border-yellow-500/30',
+      maintenance: 'bg-orange-500/15 text-orange-500 border border-orange-500/30',
     };
-    return colors[status] || 'bg-gray-500/20 text-gray-400';
+    return colors[status] || 'bg-gray-500/15 text-gray-400 border border-gray-500/30';
   };
 
   // Loading state
@@ -357,7 +418,7 @@ export default function AdminVenuesListPage() {
             <button
               onClick={fetchVenues}
               disabled={isRefreshing}
-              className="flex items-center gap-2 px-3 py-2 bg-background-light border border-border rounded-lg hover:border-border-hover text-sm"
+              className="flex items-center gap-2 px-3 py-2 bg-background-light border border-border rounded-lg hover:border-border-hover text-sm cursor-pointer"
             >
               <span className={isRefreshing ? 'animate-spin' : ''}><Icons.Refresh /></span>
               Refresh
@@ -366,23 +427,22 @@ export default function AdminVenuesListPage() {
         </div>
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
               { label: 'Total Venues', value: stats.total, color: 'text-foreground' },
               { label: 'Available', value: stats.available, color: 'text-primary' },
-              { label: 'Hidden', value: stats.hidden, color: 'text-yellow-500' },
-              { label: 'Maintenance', value: stats.maintenance, color: 'text-orange-500' },
+              { label: 'Hidden', value: stats.hidden, color: 'text-primary' },
             ].map(stat => (
-              <div key={stat.label} className="bg-background-card border border-border rounded-xl p-4">
-                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+              <div key={stat.label} className="bg-background-card border border-border rounded-xl p-4 flex flex-col justify-between gap-4">
                 <p className="text-xs text-foreground-muted">{stat.label}</p>
+                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
               </div>
             ))}
           </div>
         )}
 
         {/* Search and Filters */}
-        <div className="overflow-hidden">
+        <div className="relative z-30 overflow-visible">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-2">
               {/* <span className="text-foreground-muted"><Icons.Filter /></span> */}
@@ -426,48 +486,35 @@ export default function AdminVenuesListPage() {
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
                 Status
               </label>
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full cursor-pointer appearance-none rounded-lg border border-border bg-background/50 py-2.5 pl-3 pr-9 text-sm text-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15"
-                >
-                  <option value="all">All Status</option>
-                  <option value="available">Available</option>
-                  <option value="hidden">Hidden</option>
-                  <option value="maintenance">Maintenance</option>
-                </select>
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted">
-                  <Icons.ChevronDown />
-                </div>
-              </div>
+              <FilterDropdown
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'available', label: 'Available' },
+                  { value: 'hidden', label: 'Hidden' },
+                ]}
+              />
             </div>
 
             <div className="min-w-[170px]">
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
                 City
               </label>
-              <div className="relative">
-                <select
-                  value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
-                  className="w-full cursor-pointer appearance-none rounded-lg border border-border bg-background/50 py-2.5 pl-3 pr-9 text-sm text-foreground focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15"
-                >
-                  <option value="all">All Cities</option>
-                  {cities.map(city => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted">
-                  <Icons.ChevronDown />
-                </div>
-              </div>
+              <FilterDropdown
+                value={cityFilter}
+                onChange={setCityFilter}
+                options={[
+                  { value: 'all', label: 'All Cities' },
+                  ...cities.map((city) => ({ value: city, label: city })),
+                ]}
+              />
             </div>
           </div>
         </div>
 
         {/* Venues Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="relative z-0 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {venues.map(venue => (
             <div
               key={venue.id}
@@ -481,7 +528,7 @@ export default function AdminVenuesListPage() {
                   className="h-full w-full object-cover"
                 />
                 <div className="absolute top-2 right-2">
-                  <span className={cn('px-2 py-1 rounded-full text-xs font-medium', getStatusBadge(venue.availability))}>
+                  <span className={cn('px-2 py-1 rounded-full text-xs font-medium capitalize', getStatusBadge(venue.availability))}>
                     {venue.availability}
                   </span>
                 </div>

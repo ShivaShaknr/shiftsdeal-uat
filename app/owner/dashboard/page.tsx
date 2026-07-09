@@ -30,8 +30,13 @@ import {
   XCircle,
   Pencil,
   ArrowRight,
+  Share,
+  Share2,
+  Copy,
+  MessageCircleIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import QRCode from 'react-qr-code';
 import { Button, Card, Badge, Modal } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
 
@@ -55,9 +60,13 @@ export default function OwnerDashboardPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState<any>(null);
   const [savingVenue, setSavingVenue] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const qrRef = useRef<HTMLDivElement | null>(null);
 
   const [venueForm, setVenueForm] = useState<any>({
     availability: 'available',
@@ -161,6 +170,30 @@ export default function OwnerDashboardPage() {
       images: Array.isArray(venue.images) ? venue.images : [],
     });
     setShowInventoryModal(true);
+  };
+
+  const closeShareModal = () => {
+    setShowShareModal(false);
+    setSelectedVenue(null);
+    setShareLink('');
+    setLinkCopied(false);
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!shareLink) return;
+    await navigator.clipboard.writeText(shareLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const getWhatsAppMessage = () => {
+    const venueName = selectedVenue?.name || 'Venue';
+    return `${shareLink}`;
+  };
+
+  const handleWhatsAppShare = () => {
+    if (!shareLink) return;
+    window.open(`https://wa.me/?text=${encodeURIComponent(getWhatsAppMessage())}`, '_blank');
   };
 
   const saveInventoryUpdates = async () => {
@@ -356,16 +389,64 @@ export default function OwnerDashboardPage() {
   const totalRevenue = completedBookings.reduce((sum, b) => sum + (parseFloat(b.base_price) || 0), 0);
   const pendingVenueRequests = venueRequests.filter(r => r.status === 'pending');
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'warning';
-      case 'confirmed': return 'success';
-      case 'approved': return 'success';
-      case 'completed': return 'primary';
-      case 'cancelled': return 'error';
-      case 'rejected': return 'error';
-      default: return 'default';
-    }
+  const getVenueRequestStatusStyle = (status: string) => {
+    const styles: Record<string, { label: string; className: string }> = {
+      pending: {
+        label: 'Under Review',
+        className: 'inline-flex items-center rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2.5 py-1 text-xs font-medium text-yellow-500 capitalize',
+      },
+      approved: {
+        label: 'Approved',
+        className: 'inline-flex items-center rounded-full border border-green-500/30 bg-green-500/15 px-2.5 py-1 text-xs font-medium text-green-500 capitalize',
+      },
+      rejected: {
+        label: 'Rejected',
+        className: 'inline-flex items-center rounded-full border border-red-500/30 bg-red-500/15 px-2.5 py-1 text-xs font-medium text-red-500 capitalize',
+      },
+      expired: {
+        label: 'Expired',
+        className: 'inline-flex items-center rounded-full border border-orange-500/30 bg-orange-500/15 px-2.5 py-1 text-xs font-medium text-orange-500 capitalize',
+      },
+    };
+
+    return (
+      styles[status] || {
+        label: status,
+        className: 'inline-flex items-center rounded-full border border-border bg-background-light px-2.5 py-1 text-xs font-medium text-foreground-muted capitalize',
+      }
+    );
+  };
+
+  const getBookingStatusBadge = (status: string) => {
+    const styles: Record<string, { label: string; className: string }> = {
+      pending: {
+        label: 'Pending',
+        className: 'inline-flex items-center rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2.5 py-1 text-xs font-medium text-yellow-500',
+      },
+      confirmed: {
+        label: 'Confirmed',
+        className: 'inline-flex items-center rounded-full border border-blue-500/30 bg-blue-500/15 px-2.5 py-1 text-xs font-medium text-blue-500',
+      },
+      completed: {
+        label: 'Completed',
+        className: 'inline-flex items-center rounded-full border border-green-500/30 bg-green-500/15 px-2.5 py-1 text-xs font-medium text-green-500',
+      },
+      cancelled: {
+        label: 'Cancelled',
+        className: 'inline-flex items-center rounded-full border border-gray-500/30 bg-gray-500/15 px-2.5 py-1 text-xs font-medium text-gray-400',
+      },
+      expired: {
+        label: 'Expired',
+        className: 'inline-flex items-center rounded-full border border-orange-500/30 bg-orange-500/15 px-2.5 py-1 text-xs font-medium text-orange-500',
+      },
+    };
+
+    return (
+      styles[status] || {
+        label: status,
+        className: 'inline-flex items-center rounded-full border border-border bg-background-light px-2.5 py-1 text-xs font-medium capitalize text-foreground-muted',
+      }
+    );
   };
 
   const stats = [
@@ -540,53 +621,57 @@ export default function OwnerDashboardPage() {
                         <Building2 className="w-5 h-5 text-primary" />
                         Your Venue Submissions
                       </h3>
-                      <Link href="/list-venue/onboarding">
-                        <Button size="sm" variant="outline" leftIcon={<Plus className="w-4 h-4" />}>
+                      <Link href="/list-venue/onboarding" className="cursor-pointer">
+                        <Button size="sm" variant="outline" leftIcon={<Plus className="w-4 h-4" />} className="cursor-pointer">
                           Add Another
                         </Button>
                       </Link>
                     </div>
                     <div className="space-y-3">
-                      {venueRequests.map((request) => (
+                      {venueRequests.map((request) => {
+                        const requestStatus = getVenueRequestStatusStyle(request.status);
+
+                        return (
                         <div 
                           key={request.id} 
-                          className={`p-4 rounded-xl border ${
-                            request.status === 'pending' ? 'border-warning/30 bg-warning/5' :
-                            request.status === 'approved' ? 'border-success/30 bg-success/5' :
-                            'border-error/30 bg-error/5'
+                          className={`p-4 rounded-xl border text-[14px] ${
+                            request.status === 'pending' ? 'border-yellow-500/30 bg-yellow-500/5' :
+                            request.status === 'approved' ? 'border-green-500/30 bg-green-500/5' :
+                            request.status === 'expired' ? 'border-orange-500/30 bg-orange-500/5' :
+                            'border-red-500/30 bg-red-500/5'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-medium text-foreground">{request.name}</h4>
-                                <Badge variant={getStatusColor(request.status) as any}>
-                                  {request.status === 'pending' ? 'Under Review' : request.status}
-                                </Badge>
+                                <h4 className="text-[14px] font-semibold text-foreground capitalize">{request.name}</h4>
+                                <span className={requestStatus.className}>
+                                  {requestStatus.label}
+                                </span>
                               </div>
-                              <p className="text-sm text-foreground-muted mb-2">
+                              <p className="text-sm text-foreground-muted mb-2 capitalize">
                                 {request.type} • {request.address?.city || 'Unknown location'}
                               </p>
                               {request.status === 'pending' && (
-                                <p className="text-sm text-warning flex items-center gap-1">
+                                <p className="text-[12px] text-warning flex items-center gap-1">
                                   <Clock className="w-4 h-4" />
                                   Your venue is being reviewed by our team
                                 </p>
                               )}
                               {request.status === 'approved' && (
-                                <p className="text-sm text-success flex items-center gap-1">
+                                <p className="text-[12px] text-success flex items-center gap-1">
                                   <CheckCircle className="w-4 h-4" />
                                   Your venue is now live and visible to guests!
                                 </p>
                               )}
                               {request.status === 'rejected' && (
                                 <div>
-                                  <p className="text-sm text-error flex items-center gap-1 mb-1">
+                                  <p className="text-[12px] text-error flex items-center gap-1">
                                     <XCircle className="w-4 h-4" />
                                     Unfortunately, your venue was not approved
                                   </p>
                                   {request.rejection_reason && (
-                                    <p className="text-sm text-foreground-muted bg-background-light p-2 rounded mt-2">
+                                    <p className="text-[12px] text-foreground-muted bg-background-light p-2 rounded mt-2">
                                       <strong>Reason:</strong> {request.rejection_reason}
                                     </p>
                                   )}
@@ -602,7 +687,8 @@ export default function OwnerDashboardPage() {
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </Card>
                 )}
@@ -633,7 +719,9 @@ export default function OwnerDashboardPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-4">
-                            <Badge variant={getStatusColor(booking.status) as any}>{booking.status}</Badge>
+                            <span className={getBookingStatusBadge(booking.status).className}>
+                              {getBookingStatusBadge(booking.status).label}
+                            </span>
                             <ChevronRight className="w-5 h-5 text-foreground-muted" />
                           </div>
                         </div>
@@ -793,7 +881,7 @@ export default function OwnerDashboardPage() {
                     <Card key={venue._id} className="overflow-hidden">
                       <img src={venue.images?.[0] || '/placeholder.jpg'} alt={venue.name} className="w-full h-48 object-cover" />
                       <div className="p-4">
-                        <h4 className="font-semibold text-foreground mb-1">{venue.name}</h4>
+                        <h4 className="font-semibold text-foreground mb-1 capitalize">{venue.name}</h4>
                         <p className="text-sm text-foreground-muted mb-3 flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
                           {venue.address?.city}, {venue.address?.state}
@@ -805,14 +893,32 @@ export default function OwnerDashboardPage() {
                           </div>
                           <p className="text-primary font-semibold">{formatCurrency(venue.pricing?.hourly)}/hr</p>
                         </div>
-                        <div className="mt-3 flex items-center justify-between gap-2">
+                        <div className="mt-3 flex items-center justify-between gap-2 capitalize">
                           <Badge variant={venue.availability === 'available' ? 'success' : venue.availability === 'maintenance' ? 'warning' : 'default'}>
-                            {venue.availability || 'available'}
+                            {venue.availability || 'Available'}
                           </Badge>
-                          <Button size="sm" onClick={() => openInventoryModal(venue)} className="whitespace-nowrap">
-                            <Pencil className="w-4 h-4 mr-1" />
-                            Edit
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="whitespace-nowrap cursor-pointer"
+                              onClick={() => {
+                                const venueId = venue._id || venue.id;
+                                setSelectedVenue(venue);
+                                setShareLink(
+                                  `${window.location.origin}/venues/${venueId}?ownerId=${user?.id}`
+                                );
+                                setShowShareModal(true);
+                              }}
+                            >
+                              <Share2 className="w-4 h-4 mr-1" />
+                              Share Link
+                            </Button>
+                            <Button size="sm" onClick={() => openInventoryModal(venue)} className="whitespace-nowrap">
+                              <Pencil className="w-4 h-4 mr-1" />
+                              Edit
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </Card>
@@ -916,26 +1022,26 @@ export default function OwnerDashboardPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <p className="text-xs text-foreground-muted">Venue</p>
-                  <p className="font-medium text-foreground">
+                  <p className="font-medium text-foreground text-[12px]">
                     {selectedBooking.venue?.name || "Unknown"}
                   </p>
                 </div>
 
                 <div>
                   <p className="text-xs text-foreground-muted">Date</p>
-                  <p className="font-medium text-foreground">{selectedBooking.date}</p>
+                  <p className="font-medium text-foreground text-[12px]">{selectedBooking.date}</p>
                 </div>
 
                 <div>
                   <p className="text-xs text-foreground-muted">Time</p>
-                  <p className="font-medium text-foreground">
+                  <p className="font-medium text-foreground text-[12px]">
                     {selectedBooking.start_time} - {selectedBooking.end_time}
                   </p>
                 </div>
 
                 <div>
                   <p className="text-xs text-foreground-muted">Attendees</p>
-                  <p className="font-medium text-foreground">
+                  <p className="font-medium text-foreground text-[12px]">
                     {selectedBooking.attendees} people
                   </p>
                 </div>
@@ -980,7 +1086,7 @@ export default function OwnerDashboardPage() {
             </div>
 
             {/* Verification */}
-            <div className="rounded-2xl border border-border p-5">
+            {/* <div className="rounded-2xl border border-border p-5">
               <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
                 <FileText className="h-4 w-4" />
                 Verification Documents
@@ -1010,7 +1116,7 @@ export default function OwnerDashboardPage() {
                   </p>
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* Actions */}
             {selectedBooking.status === "pending" && (
@@ -1274,6 +1380,95 @@ export default function OwnerDashboardPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={showShareModal}
+        onClose={closeShareModal}
+        title="Share Link"
+        size="lg"
+        className="overflow-hidden"
+      >
+        <div className="overflow-x-hidden px-5 pb-5 sm:px-6 pt-4">
+          {selectedVenue?.name && (
+            <div className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-background-light px-4 py-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <Building2 className="h-5 w-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground-muted">Venue</p>
+                <p className="truncate text-sm font-semibold text-foreground">{selectedVenue.name}</p>
+              </div>
+            </div>
+          )}
+
+          <p className="mb-4 text-sm text-foreground-muted">
+            Share this link with renters so they can view and book your venue directly.
+          </p>
+
+          {shareLink && (
+            <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-[190px_minmax(0,1fr)] sm:gap-5">
+              <div className="flex flex-col items-center rounded-xl border border-border bg-white px-3 py-4">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground-muted">
+                  Scan to open
+                </p>
+                <div ref={qrRef} className="rounded-lg border border-border bg-white p-2">
+                  <QRCode value={shareLink} size={130} level="M" />
+                </div>
+                <p className="mt-3 text-center text-[11px] leading-relaxed text-foreground-muted">
+                  Scan with your phone camera to open the booking page
+                </p>
+              </div>
+
+              <div className="flex min-w-0 flex-col justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleWhatsAppShare}
+                  className="flex w-full cursor-pointer max-w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#20bd5a]"
+                >
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">
+                   <MessageCircleIcon className="h-4 w-4" />
+                  </span>
+                  <span className="truncate">Share on WhatsApp</span>
+                </button>
+
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-background-card px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground-muted">
+                      Or copy link
+                    </span>
+                  </div>
+                </div>
+
+                <div className="min-w-0 rounded-xl border border-border bg-background-light p-3">
+                  <p className="break-all text-xs font-mono leading-relaxed text-foreground/80">{shareLink}</p>
+                  <Button
+                    variant={linkCopied ? 'secondary' : 'primary'}
+                    size="sm"
+                    onClick={handleCopyShareLink}
+                    className="mt-3 w-full cursor-pointer"
+                    leftIcon={linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  >
+                    {linkCopied ? 'Copied' : 'Copy Link'}
+                  </Button>
+                </div>
+
+                <p className="text-[11px] text-foreground-muted">
+                  Includes owner and venue details in the link for direct booking.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 flex justify-end border-t border-border pt-4 cursor-pointer">
+            <Button variant="outline" onClick={closeShareModal} className="min-w-[100px]">
+              Close
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

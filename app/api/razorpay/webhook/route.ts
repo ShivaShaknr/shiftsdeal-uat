@@ -500,6 +500,10 @@ async function handlePaymentCaptured(event: any) {
           }); 
         }
       }
+      // Remove session storage items after email/whatsapp is sent
+      sessionStorage.removeItem("isOwnerReferred");
+      sessionStorage.removeItem("venueId");
+      sessionStorage.removeItem("ownerId");
 
     }
   } catch (error: any) {

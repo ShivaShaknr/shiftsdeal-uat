@@ -154,8 +154,13 @@ export default function BookingPage() {
   const calculateFullPricing = () => {
     const basePrice = calculatePrice();
     const defaultRate = Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE) || 0.1;
-    const commissionRate =
-      venue?.commission_percentage > 0
+    const isOwnerReferred =
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem('isOwnerReferred') === 'true' &&
+      sessionStorage.getItem('venueId') === String(id);
+    const commissionRate = isOwnerReferred
+      ? 0
+      : venue?.commission_percentage > 0
         ? venue.commission_percentage / 100
         : defaultRate;
     const platformFee = Math.round(basePrice * commissionRate);

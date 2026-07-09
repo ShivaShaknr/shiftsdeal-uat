@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
       pending: allRequests?.filter(r => r.status === 'pending').length || 0,
       approved: allRequests?.filter(r => r.status === 'approved').length || 0,
       rejected: allRequests?.filter(r => r.status === 'rejected').length || 0,
+      expired: allRequests?.filter(r => r.status === 'expired').length || 0,
     };
 
     return NextResponse.json({ success: true, data: transformedData, stats });

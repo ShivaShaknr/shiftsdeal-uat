@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from "next/navigation";
 import {
   MapPin,
   Users,
@@ -48,6 +49,25 @@ export default function VenueDetailPage() {
     requiredAmenities: [] as string[],
     specialRequirements: '',
   });
+
+  // Get ownerId from search params
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const ownerId = searchParams.get("ownerId");
+
+    if (ownerId) {
+      console.log("owner referred", ownerId);
+      sessionStorage.setItem("ownerId", ownerId);
+      sessionStorage.setItem("isOwnerReferred", "true");
+      sessionStorage.setItem("venueId", id as string);
+    } else {
+      console.log("owner not referred, normal user");
+      sessionStorage.removeItem("ownerId");
+      sessionStorage.removeItem("isOwnerReferred");
+      sessionStorage.removeItem("venueId");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchVenue = async () => {

@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS venue_requests (
   rules TEXT[] DEFAULT ARRAY[]::TEXT[],
   
   -- Request Status
-  status TEXT CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
+  status TEXT CHECK (status IN ('pending', 'approved', 'rejected', 'expired')) DEFAULT 'pending',
   admin_notes TEXT,
   reviewed_by UUID REFERENCES users(id),
   reviewed_at TIMESTAMP WITH TIME ZONE,

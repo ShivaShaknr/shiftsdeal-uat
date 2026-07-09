@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { formatCurrency, cn } from '@/lib/utils';
 import AdminHeader from '@/components/layout/AdminHeader';
 import VenueEditModal from '@/components/admin/VenueEditModal';
+import { Check, Eye, Pencil, X } from 'lucide-react';
 
 // Icons as simple SVG components
 const Icons = {
@@ -56,7 +57,7 @@ interface VenueRequest {
   commission_percentage?: number | null;
   amenities: string[];
   rules: string[];
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
   admin_notes: string | null;
   rejection_reason: string | null;
   created_at: string;
@@ -68,6 +69,7 @@ interface Stats {
   pending: number;
   approved: number;
   rejected: number;
+  expired: number;
 }
 
 export default function AdminVenueRequestsPage() {
@@ -158,6 +160,7 @@ export default function AdminVenueRequestsPage() {
       if (data.success) {
         setRequests(data.data);
         setStats(data.stats);
+        console.log(data.stats);
       }
     } catch (error) {
       console.error('Fetch error:', error);
@@ -273,6 +276,11 @@ export default function AdminVenueRequestsPage() {
         className: 'border-red-500/30 bg-red-500/15 text-red-400',
         dot: 'bg-red-400',
       },
+      expired: {
+        label: 'Expired',
+        className: 'border-red-500/30 bg-red-500/15 text-red-400',
+        dot: 'bg-red-400',
+      },
     } as const;
 
     const item = config[status] ?? config.pending;
@@ -365,8 +373,8 @@ export default function AdminVenueRequestsPage() {
         {/* Page Title */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Venue Requests</h2>
-            <p className="text-sm text-foreground-muted">Review and approve new venue listings</p>
+            <h2 className="text-[18px] font-bold text-foreground">Venue Requests</h2>
+            <p className="text-[12px] text-foreground-muted">Review and approve new venue listings</p>
           </div>
           <button
             onClick={() => fetchRequests()}
@@ -383,13 +391,13 @@ export default function AdminVenueRequestsPage() {
           <div className="grid grid-cols-5 gap-4 mb-6">
             {[
               { label: 'Total', value: stats.total, color: 'text-foreground' },
-              { label: 'Pending', value: stats.pending, color: 'text-yellow-500' },
-              { label: 'Approved', value: stats.approved, color: 'text-primary' },
-              { label: 'Rejected', value: stats.rejected, color: 'text-red-500' },
-              { label: 'Expired', value: 0, color: 'text-gray-500' },
+              { label: 'Pending', value: stats.pending, color: 'text-foreground' },
+              { label: 'Approved', value: stats.approved, color: 'text-foreground' },
+              { label: 'Rejected', value: stats.rejected, color: 'text-foreground' },
+              { label: 'Expired', value: stats.expired, color: 'text-foreground' },
             ].map(stat => (
-              <div key={stat.label} className="bg-background-card border border-border rounded-xl p-4">
-                <p className="text-sm text-foreground-muted">{stat.label}</p>
+              <div key={stat.label} className="bg-background-card border border-border rounded-xl p-4 flex flex-col items-start gap-2">
+                <p className="text-[12px] text-foreground-muted font-semibold">{stat.label}</p>
                 <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
               </div>
             ))}
@@ -449,15 +457,15 @@ export default function AdminVenueRequestsPage() {
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 p-4">
+                  <div className="flex-1 p-4 flex flex-col justify-between">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="text-[16px] font-semibold text-foreground">{request.name}</h3>
-                        <div className="flex items-center gap-2 text-sm text-foreground-muted mt-1">
+                        <h3 className="text-[14px] font-semibold text-foreground">{request.name}</h3>
+                        <div className="flex items-center gap-2 text-[12px] text-foreground-muted mt-1">
                           <Icons.MapPin />
-                          <span className='text-[14px] font-medium capitalize text-foreground-muted'>{request.address_city}, {request.address_state}</span>
+                          <span className='text-[12px] font-medium capitalize text-foreground-muted'>{request.address_city}, {request.address_state}</span>
                         </div>
-                        <p className="text-[14px] font-medium capitalize text-foreground-muted mt-1">
+                        <p className="text-[12px] font-medium capitalize text-foreground-muted mt-1">
                           {request.type} • {request.capacity_min}-{request.capacity_max} guests
                         </p>
                       </div>
@@ -465,13 +473,13 @@ export default function AdminVenueRequestsPage() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <div className="text-sm">
+                      <div className="text-[12px]">
                         <span className="text-foreground-muted">Owner:</span>
                         <span className="text-foreground ml-2">{request.owner?.name || 'Unknown'}</span>
-                        <span className="text-foreground-muted ml-2">({request.owner?.email})</span>
+                        <span className="text-foreground-muted ml-2 text-[12px]">({request.owner?.email})</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-primary font-semibold">
+                        <span className="text-primary font-semibold text-[16px]">
                           {formatCurrency(request.pricing_hourly)}/hr
                         </span>
                         <button
@@ -479,8 +487,9 @@ export default function AdminVenueRequestsPage() {
                             setSelectedRequest(request);
                             setAdminNotes(request.admin_notes || '');
                           }}
-                          className="px-4 py-2 bg-background-light border border-border rounded-lg hover:border-primary text-sm cursor-pointer"
+                          className="px-4 py-[6px] cursor-pointer text-[12px] bg-background-light border border-border rounded-lg hover:border-primary text-sm w-fit flex items-center justify-center gap-2"
                         >
+                          <Eye className="h-3 w-3" />
                           View Details
                         </button>
                         {request.status === 'pending' && (
@@ -490,15 +499,17 @@ export default function AdminVenueRequestsPage() {
                                 setEditingRequest(request);
                                 setShowEditModal(true);
                               }}
-                              className="px-4 py-2 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 text-sm"
+                              className="px-4 py-[6px] cursor-pointer text-[12px] bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 text-sm w-fit flex items-center justify-center gap-2"
                             >
+                              <Pencil className="h-3 w-3" />
                               Edit
                             </button>
                             <button
                               onClick={() => handleApprove(request.id)}
                               disabled={processingId === request.id}
-                              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover text-sm disabled:opacity-50"
+                              className="px-4 py-[6px] cursor-pointer text-[12px] bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover text-sm disabled:opacity-50 w-fit flex items-center justify-center gap-2"
                             >
+                              <Check className="h-3 w-3" />
                               Approve
                             </button>
                             <button
@@ -506,8 +517,9 @@ export default function AdminVenueRequestsPage() {
                                 setSelectedRequest(request);
                                 setShowRejectModal(true);
                               }}
-                              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
+                              className="px-4 py-[6px] cursor-pointer text-[12px] bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg  font-semibold text-sm w-fit flex items-center justify-center gap-2"
                             >
+                              <X className="h-3 w-3" />
                               Reject
                             </button>
                           </>
@@ -525,7 +537,7 @@ export default function AdminVenueRequestsPage() {
       {/* Venue Edit Modal */}
       {showEditModal && editingRequest && (
         <VenueEditModal
-          venue={editingRequest}
+          venue={editingRequest as any}
           mode="venue_request"
           isOpen={showEditModal}
           onClose={() => {
@@ -539,29 +551,32 @@ export default function AdminVenueRequestsPage() {
 
       {/* Detail Modal */}
       {selectedRequest && !showRejectModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-card border border-border rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-border flex items-center justify-between">
-              <h2 className="text-[16px] font-semibold text-foreground">Venue Details</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-border bg-background-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div className='flex items-center gap-4'>
+                <h2 className="text-base font-semibold text-foreground">Venue Details</h2>
+                <div className='text-[12px] font-medium capitalize text-foreground-muted bg-background-light border border-border rounded-lg px-2 py-1'>{selectedRequest.status}</div>
+              </div>
               <button
                 onClick={() => setSelectedRequest(null)}
-                className="p-2 hover:bg-background-light rounded-lg cursor-pointer"
+                className="rounded-lg p-2 text-foreground-muted transition-colors hover:bg-background-light hover:text-foreground cursor-pointer"
               >
                 <Icons.X />
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="space-y-6 p-6">
               {/* Image Gallery */}
               {selectedRequest.images.length > 0 && (
-                <div className="mb-6">
-                  <div className="grid grid-cols-4 gap-2">
+                <div>
+                  <div className="grid grid-cols-4 gap-3">
                     {selectedRequest.images.map((img, idx) => (
                       <img
                         key={idx}
                         src={img}
                         alt={`Photo ${idx + 1}`}
-                        className="w-full aspect-video object-cover rounded-lg"
+                        className="aspect-video w-full rounded-lg border border-border/80 object-cover shadow-sm"
                       />
                     ))}
                   </div>
@@ -571,59 +586,62 @@ export default function AdminVenueRequestsPage() {
               {/* Info Grid */}
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground-muted mb-1">Venue Name</h3>
+                  <div className="rounded-lg border border-border/60 bg-background-light/40 px-3 py-2.5">
+                    <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">Venue Name</h3>
                     <p className="text-lg font-semibold text-foreground">{selectedRequest.name}</p>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground-muted mb-1">Type</h3>
+                  <div className="rounded-lg border border-border/60 bg-background-light/40 px-3 py-2.5">
+                    <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">Type</h3>
                     <p className="capitalize text-foreground">{selectedRequest.type.replace('-', ' ')}</p>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground-muted mb-1">Capacity</h3>
+                  <div className="rounded-lg border border-border/60 bg-background-light/40 px-3 py-2.5">
+                    <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">Capacity</h3>
                     <p className="text-foreground">{selectedRequest.capacity_min} - {selectedRequest.capacity_max} guests</p>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground-muted mb-1">Description</h3>
-                    <p className="text-sm text-foreground-muted">{selectedRequest.description}</p>
+                  <div className="rounded-lg border border-border/60 bg-background-light/40 px-3 py-2.5">
+                    <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">Description</h3>
+                    <p className="text-sm leading-relaxed text-foreground-muted">{selectedRequest.description}</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground-muted mb-1">Location</h3>
+                  <div className="rounded-lg border border-border/60 bg-background-light/40 px-3 py-2.5">
+                    <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">Location</h3>
                     <p className="text-foreground">{selectedRequest.address_street}</p>
-                    <p className="text-foreground-muted">
+                    <p className="mt-0.5 text-sm text-foreground-muted">
                       {selectedRequest.address_city}, {selectedRequest.address_state} - {selectedRequest.address_pincode}
                     </p>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground-muted mb-1">Pricing</h3>
+                  <div className="rounded-lg border border-border/60 bg-background-light/40 px-3 py-2.5">
+                    <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">Pricing</h3>
                     <div className="space-y-1 text-sm">
-                      <p className="text-foreground">Hourly: <span className="text-primary">{formatCurrency(selectedRequest.pricing_hourly)}</span></p>
+                      <p className="text-foreground">Hourly: <span className="font-medium text-primary">{formatCurrency(selectedRequest.pricing_hourly)}</span></p>
                       {selectedRequest.pricing_half_day && (
-                        <p className="text-foreground">Half Day: <span className="text-primary">{formatCurrency(selectedRequest.pricing_half_day)}</span></p>
+                        <p className="text-foreground">Half Day: <span className="font-medium text-primary">{formatCurrency(selectedRequest.pricing_half_day)}</span></p>
                       )}
                       {selectedRequest.pricing_full_day && (
-                        <p className="text-foreground">Full Day: <span className="text-primary">{formatCurrency(selectedRequest.pricing_full_day)}</span></p>
+                        <p className="text-foreground">Full Day: <span className="font-medium text-primary">{formatCurrency(selectedRequest.pricing_full_day)}</span></p>
                       )}
                     </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground-muted mb-1">Owner</h3>
-                    <p className="text-foreground">{selectedRequest.owner?.name}</p>
-                    <p className="text-sm text-foreground-muted">{selectedRequest.owner?.email}</p>
+                  <div className="rounded-lg border border-border/60 bg-background-light/40 px-3 py-2.5">
+                    <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">Owner</h3>
+                    <p className="font-medium text-foreground">{selectedRequest.owner?.name}</p>
+                    <p className="mt-0.5 text-sm text-foreground-muted">{selectedRequest.owner?.email}</p>
                   </div>
                 </div>
               </div>
 
               {/* Amenities */}
               {selectedRequest.amenities.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-medium text-foreground-muted mb-2">Amenities</h3>
+                <div className="border-t border-border pt-6">
+                  <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">Amenities</h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedRequest.amenities.map((amenity, idx) => (
-                      <span key={idx} className="px-3 py-1 bg-background-light rounded-full text-sm text-foreground">
+                      <span
+                        key={idx}
+                        className="rounded-full border border-border bg-background-light px-3 py-1 text-xs text-foreground"
+                      >
                         {amenity}
                       </span>
                     ))}
@@ -633,9 +651,9 @@ export default function AdminVenueRequestsPage() {
 
               {/* Rules */}
               {selectedRequest.rules.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-medium text-foreground-muted mb-2">Venue Rules</h3>
-                  <ul className="list-disc list-inside text-sm text-foreground-muted space-y-1">
+                <div className="border-t border-border pt-6">
+                  <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">Venue Rules</h3>
+                  <ul className="list-inside list-disc space-y-1.5 rounded-lg border border-border/60 bg-background-light/40 px-4 py-3 text-sm leading-relaxed text-foreground-muted">
                     {selectedRequest.rules.map((rule, idx) => (
                       <li key={idx}>{rule}</li>
                     ))}
@@ -644,39 +662,39 @@ export default function AdminVenueRequestsPage() {
               )}
 
               {/* Admin Notes */}
-              <div className="mt-6">
-                <h3 className="text-sm font-medium text-foreground-muted mb-2">Admin Notes</h3>
+              <div className="border-t border-border pt-6">
+                <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">Admin Notes</h3>
                 <textarea
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
                   placeholder="Add internal notes..."
-                  className="w-full bg-background-light border border-border rounded-lg p-3 text-foreground placeholder-foreground-muted focus:outline-none focus:border-primary min-h-[80px]"
+                  className="min-h-[88px] w-full resize-none rounded-xl border border-border bg-background-light p-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
                 />
               </div>
 
               {/* Actions */}
               {selectedRequest.status === 'pending' && (
-                <div className="mt-6 flex gap-3">
+                <div className="flex gap-3 border-t border-border pt-6">
                   <button
                     onClick={() => {
                       setEditingRequest(selectedRequest);
                       setShowEditModal(true);
                       setSelectedRequest(null);
                     }}
-                    className="flex-1 py-3 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg font-semibold hover:bg-blue-500/20"
+                    className="flex-1 rounded-xl border border-blue-500/30 bg-blue-500/10 py-3 text-sm font-semibold text-blue-400 transition-colors hover:bg-blue-500/20"
                   >
                     Edit Details
                   </button>
                   <button
                     onClick={() => handleApprove(selectedRequest.id)}
                     disabled={processingId === selectedRequest.id}
-                    className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary-hover disabled:opacity-50"
+                    className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
                   >
                     Approve & Publish
                   </button>
                   <button
                     onClick={() => setShowRejectModal(true)}
-                    className="flex-1 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600"
+                    className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-600"
                   >
                     Reject
                   </button>
@@ -684,9 +702,9 @@ export default function AdminVenueRequestsPage() {
               )}
 
               {selectedRequest.status === 'rejected' && selectedRequest.rejection_reason && (
-                <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <h3 className="text-sm font-medium text-red-400 mb-1">Rejection Reason</h3>
-                  <p className="text-sm text-gray-400">{selectedRequest.rejection_reason}</p>
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                  <h3 className="mb-1 text-sm font-medium text-red-400">Rejection Reason</h3>
+                  <p className="text-sm leading-relaxed text-foreground-muted">{selectedRequest.rejection_reason}</p>
                 </div>
               )}
             </div>

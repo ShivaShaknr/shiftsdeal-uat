@@ -186,10 +186,8 @@ export default function AdminDashboard() {
     if (filter === 'pending') return b.status === 'pending';
     if (filter === 'confirmed') return b.status === 'confirmed';
     if (filter === 'completed') return b.status === 'completed';
-    if (filter === 'awaiting_payment') return b.status === 'confirmed' && !b.deposit_paid;
-    if (filter === 'deposit_paid') return b.deposit_paid;
-    if (filter === 'follow_up_needed') return b.status === 'confirmed' && !b.deposit_paid && !b.follow_up_sent;
-    if (filter === 'expired') return b.deposit_expired;
+    if (filter === 'awaiting_payment') return b.status === 'confirmed' && b.payment_status === 'pending';
+    if (filter === 'expired') return b.status === 'expired' || b.deposit_expired;
     return true;
   });
 
@@ -204,7 +202,7 @@ export default function AdminDashboard() {
       completed:
         'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20',
       expired:
-        'bg-gray-500/10 text-gray-600 border border-gray-500/20',
+        'bg-red-500/10 text-red-600 border border-red-500/20',
     };
     return colors[status] || 'bg-muted text-muted-foreground border border-border';
   };
@@ -223,22 +221,17 @@ export default function AdminDashboard() {
     const config = {
       fully_paid: {
         label: 'Fully Paid',
-        className: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-400',
-        dot: 'bg-emerald-400',
-      },
-      deposit_paid: {
-        label: 'Deposit Paid',
-        className: 'border-sky-500/30 bg-sky-500/15 text-sky-400',
-        dot: 'bg-sky-400',
+        className: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20',
+        dot: 'bg-emerald-500',
       },
       pending: {
         label: 'Pending',
-        className: 'border-amber-500/30 bg-amber-500/15 text-amber-400',
+        className: 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20',
         dot: 'bg-amber-400',
       },
       expired: {
         label: 'Expired',
-        className: 'border-red-500/30 bg-red-500/15 text-red-400',
+        className: 'bg-red-500/10 text-red-600 border border-red-500/20',
         dot: 'bg-red-400',
       },
     } as const;
@@ -444,33 +437,49 @@ export default function AdminDashboard() {
                     "border-b border-border/50 hover:bg-background-light cursor-pointer",
                     booking.deposit_expired && "bg-red-500/5"
                   )}>
-                    <td className="py-3 px-4">
-                      <p className="font-medium text-foreground">{booking.event_name}</p>
-                      <p className="text-[10px] text-foreground-muted">{formatDate(booking.date)} | {formatTimeRange(booking.start_time, booking.end_time)}</p>
-                      {booking.deposit_expired && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400 mt-1">
-                          ⚠️ EXPIRED - 24h+
-                        </span>
-                      )}
+                    <td className="py-2 px-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground leading-none text-[14px]">
+                            {booking.event_name}
+                          </p>
+
+                          {booking.platform_fee === 0 && (
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[8px] font-medium leading-none text-green-700">
+                              Owner Referred
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-[10px] text-foreground-muted leading-none">
+                          {formatDate(booking.date)} | {formatTimeRange(booking.start_time, booking.end_time)}
+                        </p>
+
+                        {booking.deposit_expired && (
+                          <span className="mt-1 w-fit inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400">
+                            ⚠️ EXPIRED - 24h+
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <p className="text-sm text-foreground">{booking.venues?.name}</p>
-                      <p className="text-xs text-foreground-muted">{booking.venues?.address_city}</p>
+                    <td className="py-2 px-4">
+                      <p className="text-sm text-foreground text-[14px] font-semibold">{booking.venues?.name}</p>
+                      <p className="text-xs text-[10px] capitalize text-foreground-muted font-semibold">{booking.venues?.address_city}</p>
                     </td>
-                    <td className="py-3 px-4">
-                      <p className="text-sm text-foreground">{booking.owner?.name || '-'}</p>
-                      <p className="text-xs text-foreground-muted">{booking.owner?.email || '-'}</p>
+                    <td className="py-2 px-4">
+                      <p className="text-sm text-foreground text-[14px] font-semibold">{booking.owner?.name || '-'}</p>
+                      <p className="text-xs text-[10px] text-foreground-muted font-semibold">{booking.owner?.email || '-'}</p>
                     </td>
-                    <td className="py-3 px-4">
-                      <p className="text-sm text-foreground">{booking.renter?.name || booking.contact_name}</p>
-                      <p className="text-xs text-foreground-muted">{booking.renter?.email || booking.contact_email}</p>
-                      <p className="text-[10px] text-foreground-muted">{booking.contact_phone}</p>
+                    <td className="py-2 px-4">
+                      <p className="text-sm text-foreground text-[14px] font-semibold">{booking.renter?.name || booking.contact_name}</p>
+                      <p className="text-[10px] text-foreground-muted font-semibold">{booking.renter?.email || booking.contact_email}</p>
+                      <p className="text-[10px] text-foreground-muted font-medium">{booking.contact_phone}</p>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2 px-4">
                       <p className="text-sm font-medium text-primary">{formatCurrency(booking.total_amount)}</p>
                       {/* <p className="text-xs text-foreground-muted">Dep: {formatCurrency(booking.deposit_amount)}</p> */}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2 px-4">
                     <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize ${getStatusBadge(
                           booking.status
@@ -479,10 +488,10 @@ export default function AdminDashboard() {
                         {booking.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2 px-4">
                       <PaymentStatusBadge status={booking.payment_status} />
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2 px-4">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setSelectedBooking(booking)}
@@ -531,7 +540,12 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-background-card border border-border rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-border flex items-center justify-between">
-              <h2 className="text-xl font-bold text-foreground">Booking Details</h2>
+              <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-foreground text-center">Booking Details</h2>
+              {selectedBooking.platform_fee === 0 && (
+                    <div className='text-[10px] font-medium text-center bg-green-500/10 text-green-600 w-fit px-2 py-1 rounded-lg'>Owner Referred</div>
+              )}
+              </div>
               <button
                 onClick={() => setSelectedBooking(null)}
                 className="p-2 hover:bg-background-light rounded-lg text-foreground cursor-pointer"
@@ -712,7 +726,7 @@ export default function AdminDashboard() {
                 />
                 <InfoRow
                   label="Payment Gateway"
-                  value="Razorpay"
+                  value={selectedBooking.razorpay_payment_id || '-'}
                 />
                 <InfoRow
                   label="Payment Status"
