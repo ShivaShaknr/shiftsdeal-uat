@@ -12,6 +12,7 @@
     "dev:with-cron": "npm run dev"
   },
   "dependencies": {
+    "@carousel-ui/react-spin-carousel-3d": "^1.0.18",
     "@google/generative-ai": "^0.24.1",
     "@react-google-maps/api": "^2.20.8",
     "@supabase/supabase-js": "^2.89.0",

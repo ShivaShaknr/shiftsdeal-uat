@@ -27,6 +27,8 @@ const steps: { id: BookingStep; label: string; icon: any }[] = [
   { id: 'confirm', label: 'Confirm', icon: CheckCircle },
 ];
 
+const PHONE_REGEX = /^\d{10}$/;
+
 export default function BookingPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -318,8 +320,7 @@ export default function BookingPage() {
     }
 
     // Validate phone number
-    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
-    if (!phoneRegex.test(formData.contactPhone.replace(/\s/g, ''))) {
+    if (!PHONE_REGEX.test(formData.contactPhone)) {
       return false;
     }
 
@@ -374,10 +375,9 @@ export default function BookingPage() {
       return false;
     }
 
-    // Validate phone number (Indian format)
-    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
-    if (!phoneRegex.test(formData.contactPhone.replace(/\s/g, ''))) {
-      alert('Please enter a valid phone number');
+    // Validate phone number
+    if (!PHONE_REGEX.test(formData.contactPhone)) {
+      alert('Please enter a valid 10-digit phone number');
       return false;
     }
 
@@ -487,7 +487,7 @@ export default function BookingPage() {
         localStorage.setItem('lastBookingReceipt', JSON.stringify(receiptData));
         router.push('/booking-success');
       } else {
-        alert('Failed to create booking. Please try again.');
+        alert(result.error || 'Failed to create booking. Please try again.');
       }
     } catch (error) {
       console.error('Booking error:', error);
@@ -740,13 +740,16 @@ export default function BookingPage() {
                           <Input
                             label="Phone"
                             type="tel"
-                            placeholder="+91 99909 44319"
+                            placeholder="9876543210"
                             value={formData.contactPhone}
-                            onChange={(e) => handleInputChange('contactPhone', e.target.value)}
+                            onChange={(e) =>
+                              handleInputChange('contactPhone', e.target.value.replace(/\D/g, '').slice(0, 10))
+                            }
+                            maxLength={10}
                             required
                           />
-                          {formData.contactPhone && !/^[+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/.test(formData.contactPhone.replace(/\s/g, '')) && (
-                            <p className="text-xs text-error mt-1">Please enter a valid phone number</p>
+                          {formData.contactPhone && !PHONE_REGEX.test(formData.contactPhone) && (
+                            <p className="text-xs text-error mt-1">Please enter a valid 10-digit phone number</p>
                           )}
                         </div>
                       </div>

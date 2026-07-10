@@ -100,6 +100,28 @@ export async function POST(request: NextRequest) {
   try {
     const bookingData = await request.json();
 
+    console.log('bookingData --------------------->', bookingData);
+
+    const { venue_id, date, start_time, end_time } = bookingData;
+    const newStart = start_time.length === 5 ? `${start_time}:00` : start_time;
+    const newEnd = end_time.length === 5 ? `${end_time}:00` : end_time;
+
+    const { data: existingBookings } = await supabaseAdmin
+      .from('bookings')
+      .select('id, start_time, end_time, status')
+      .eq('venue_id', venue_id)
+      .eq('date', date)
+      .lt('start_time', newEnd)
+      .gt('end_time', newStart)
+      .in('status', ['pending', 'confirmed']);
+
+    if (existingBookings && existingBookings.length > 0) {
+      return NextResponse.json(
+        { error: 'This slot is already booked for this venue.' },
+        { status: 409 }
+      );
+    }
+
     const { data, error } = await supabaseAdmin
       .from('bookings')
       .insert([bookingData])

@@ -9,6 +9,7 @@ import {
   MapPin,
   Users,
   Calendar,
+  ChevronLeft,
   ChevronRight,
   Brain,
   Wand2,
@@ -24,138 +25,72 @@ import { Button, Card, AIBadge } from '@/components/ui';
 import { venueTypes, cities, formatCurrency } from '@/lib/utils';
 import { GlowingEffect } from '@/components/ui/glowing-effect';
 
-const RotatingText = () => {
-  const words = ['Events', 'Meetings', 'Seminars', 'Sessions', 'Trainings'];
-  const colors = ['#5ce1e6', '#f45500', '#c0fa27', '#bc674e'];
-  const [index, setIndex] = useState(0);
+import WatermarkedImage from '@/components/ui/WatermarkedImage';
+import { ThreeDPhotoCarousel } from '@/components/ui/3d-carousel';
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIndex((prev) => (prev + 1) % words.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
+const heroImages = ['/bg1.jpg', '/bg2.jpg', '/bg3.jpg'];
 
-  return (
-    <span className="inline-block relative w-[200px] md:w-[350px] lg:w-[450px] text-left">
-      <AnimatePresence mode="wait">
-        <motion.span
-          key={words[index]}
-          initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          exit={{ opacity: 0, y: -30, filter: 'blur(10px)' }}
-          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-          className="inline-block font-[family-name:var(--font-caveat)] text-[1.3em] md:text-[1.3em] lg:text-[1.3em] text-5xl md:text-8xl lg:text-9xl drop-shadow-[0_0_25px_rgba(255,255,255,0.4)]"
-          style={{ color: colors[index % colors.length] }}
-        >
-          {words[index]}
-        </motion.span>
-      </AnimatePresence>
-      <svg className="absolute -bottom-2 md:-bottom-4 left-0 w-[50%]" viewBox="0 0 400 12" fill="none" preserveAspectRatio="none">
-        <motion.path 
-          d="M3 9C80 3 200 1 397 8" 
-          stroke="#ffffff" 
-          strokeWidth="4" 
-          strokeLinecap="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-        />
-      </svg>
-    </span>
-  );
-};
+const venueTypeCards = [
+  { label: 'Halls', href: '/venues?q=hall', keyword: 'hall', image: '/img%201%20hall.jpeg' },
+  { label: 'Auditoriums', href: '/venues?q=auditorium', keyword: 'auditorium', image: '/img%202%20audi.jpeg' },
+  {
+    label: 'Rooftops',
+    href: '/venues?q=rooftop',
+    keyword: 'rooftop',
+    image: 'https://piyaatvbigxjqxwyopqj.supabase.co/storage/v1/object/public/venue-images/1778400616815-terrace_1_.jpeg',
+  },
+  { label: 'Creative Studios', href: '/venues?type=photography-studio', type: 'photography-studio', image: '/Cool Halls and coorporate images/Coorporate campus 2.png' },
+  { label: 'Event Spaces', href: '/venues?type=workshop-space', type: 'workshop-space', image: '/img%203%20working%20spaces.jpeg' },
+];
 
-const Spotlight = ({
-  initialX,
-  initialY,
-  animateX,
-  animateY,
-  duration = 10,
-  delay = 0
-}: {
-  initialX: string;
-  initialY: string;
-  animateX: string[];
-  animateY: string[];
-  duration?: number;
-  delay?: number;
-}) => {
-  return (
-    <motion.div
-      className="absolute w-[600px] h-[600px] rounded-full pointer-events-none z-[1] mix-blend-screen"
-      style={{
-        background: 'radial-gradient(circle, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 70%)',
-        filter: 'blur(80px)',
-        top: 0,
-        left: 0,
-      }}
-      initial={{ x: initialX, y: initialY, opacity: 0 }}
-      animate={{
-        x: animateX,
-        y: animateY,
-        scale: [1, 1.2, 0.9, 1],
-        opacity: [1, 1, 1],
-      }}
-      transition={{
-        duration: duration,
-        repeat: Infinity,
-        repeatType: "reverse",
-        ease: "easeInOut",
-        delay: delay,
-      }}
-    />
-  );
-};
-
-// Featured venues (dummy data)
+// Featured venues (live data)
 const featuredVenues = [
   {
-    id: '1',
-    name: 'Grand Business Hub',
-    type: 'conference-room',
-    image: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800',
-    city: 'Mumbai',
-    capacity: 200,
-    price: 45000,
-    rating: 4.9,
-    reviews: 128,
+    id: 'd69c2cea-ab74-47df-9f73-c1caf7f3f27d',
+    name: 'Rooftop In Gurgaon',
+    type: 'workshop-space',
+    image: 'https://piyaatvbigxjqxwyopqj.supabase.co/storage/v1/object/public/venue-images/1778400616815-terrace_1_.jpeg',
+    city: 'Sector 43',
+    capacity: 20,
+    price: 3000,
+    rating: 0,
+    reviews: 0,
     aiScore: 95,
   },
   {
-    id: '2',
-    name: 'Skyline Training Center',
-    type: 'training-hall',
-    image: 'https://images.unsplash.com/photo-1560439514-4e9645039924?w=800',
-    city: 'Bangalore',
-    capacity: 100,
-    price: 28000,
-    rating: 4.8,
-    reviews: 89,
+    id: '7c37e2e0-3e2c-4b16-9509-cc050ab3a3ad',
+    name: 'workshop space',
+    type: 'private',
+    image: 'https://piyaatvbigxjqxwyopqj.supabase.co/storage/v1/object/public/venue-images/1778325357933-caf2.png',
+    city: 'Pritampura',
+    capacity: 20,
+    price: 2000,
+    rating: 0,
+    reviews: 0,
     aiScore: 92,
   },
   {
-    id: '3',
-    name: 'Heritage Auditorium',
+    id: '84c22564-20e6-4545-bc76-7d8f77cf81ae',
+    name: '90 Seater Auditorium',
     type: 'auditorium',
-    image: 'https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=800',
-    city: 'Delhi',
-    capacity: 500,
-    price: 85000,
-    rating: 4.7,
-    reviews: 156,
+    image: 'https://piyaatvbigxjqxwyopqj.supabase.co/storage/v1/object/public/venue-images/1778328484186-preview__6_.jpg',
+    city: 'Sector 62',
+    capacity: 90,
+    price: 10000,
+    rating: 0,
+    reviews: 0,
     aiScore: 88,
   },
   {
-    id: '4',
-    name: 'Innovation Workshop Lab',
+    id: 'dc2d7e2a-5b83-4808-b31e-17e3c553c170',
+    name: 'Event Space in Gurgaon',
     type: 'workshop-space',
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800',
-    city: 'Pune',
-    capacity: 50,
-    price: 15000,
-    rating: 4.9,
-    reviews: 67,
+    image: 'https://piyaatvbigxjqxwyopqj.supabase.co/storage/v1/object/public/venue-images/1778400289688-2_hall_1_.jpeg',
+    city: 'Sector 43',
+    capacity: 25,
+    price: 3500,
+    rating: 0,
+    reviews: 0,
     aiScore: 94,
   },
 ];
@@ -165,6 +100,24 @@ const stats = [
   { value: '15,000+', label: 'Bookings Made' },
   { value: '500+', label: 'Cities Covered' },
   { value: '4.8★', label: 'Average Rating' },
+];
+
+const howItWorksSteps = [
+  {
+    step: '01',
+    title: 'Search & Discover',
+    description: 'Use our AI-powered search to find venues that match your requirements perfectly.',
+  },
+  {
+    step: '02',
+    title: 'Compare & Choose',
+    description: 'View detailed information, photos, reviews, and AI suitability scores to make the best choice.',
+  },
+  {
+    step: '03',
+    title: 'Book & Confirm',
+    description: 'Complete verification, sign the contract, and get instant confirmation.',
+  },
 ];
 
 const features = [
@@ -197,6 +150,22 @@ export default function HomePage() {
   const [venueType, setVenueType] = useState('');
   const [capacity, setCapacity] = useState('');
   const [isAISearching, setIsAISearching] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroImages.length);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [currentSlide]);
+
+  const goToPrevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + heroImages.length) % heroImages.length);
+  };
+
+  const goToNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % heroImages.length);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -215,6 +184,58 @@ export default function HomePage() {
     window.addEventListener('scroll', handleScroll);
     handleScroll(); // Initial call to set correct state
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadCategoryImages = async () => {
+      try {
+        const res = await fetch('/api/venues');
+        const data = await res.json();
+        const allVenues: any[] = data?.data || [];
+
+        const images: Record<string, string> = {};
+        const usedVenueIds = new Set<string>();
+
+        // Exact-type cards claim their venue first (some types have only one
+        // live match), so keyword-based cards don't steal the only candidate.
+        const sortedCards = [...venueTypeCards].sort((a, b) => (a.type ? -1 : 0) - (b.type ? -1 : 0));
+
+        for (const card of sortedCards) {
+          let candidates: any[] = [];
+          if (card.type) {
+            candidates = allVenues.filter((v) => v.type === card.type);
+          } else if (card.keyword) {
+            const kw = card.keyword.toLowerCase();
+            candidates = allVenues.filter(
+              (v) =>
+                v.name?.toLowerCase().includes(kw) ||
+                v.description?.toLowerCase().includes(kw) ||
+                v.type?.toLowerCase().includes(kw)
+            );
+          }
+
+          const match = candidates.find((v) => !usedVenueIds.has(v.id)) || candidates[0];
+          if (match) {
+            usedVenueIds.add(match.id);
+            if (match.images?.[0]) images[card.label] = match.images[0];
+          }
+        }
+        setCategoryImages(images);
+
+        const liveGalleryImages = allVenues
+          .map((v) => v.images?.[0])
+          .filter((src): src is string => Boolean(src))
+          .slice(0, 10);
+        setGalleryImages(liveGalleryImages);
+      } catch (error) {
+        // Keep the fallback images for every category
+      }
+    };
+
+    loadCategoryImages();
   }, []);
 
   const handleSearch = () => {
@@ -271,64 +292,63 @@ export default function HomePage() {
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Background Image */}
-        <motion.div 
-          className="absolute inset-0"
-          initial={{ scale: 1.1 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
+        {/* Background Image Carousel */}
+        <div className="absolute inset-0">
+          <AnimatePresence mode="sync">
+            <motion.div
+              key={currentSlide}
+              className="absolute inset-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.2, ease: 'easeInOut' }}
+            >
+              <Image
+                src={heroImages[currentSlide]}
+                alt="Venue background"
+                fill
+                className="object-cover"
+                priority={currentSlide === 0}
+              />
+            </motion.div>
+          </AnimatePresence>
+          <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60" />
+        </div>
+
+        {/* Carousel Arrows */}
+        <button
+          onClick={goToPrevSlide}
+          aria-label="Previous background image"
+          className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
         >
-          <Image
-            src="/Cool Halls and coorporate images/Dark aesthetic hall.png"
-            alt="Auditorium"
-            fill
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-black/85 via-black/75 to-black/85" />
-        </motion.div>
-        
-        {/* Ambient Spotlights */}
-        <Spotlight 
-          initialX="-20vw" 
-          initialY="-15vh" 
-          animateX={["-20vw", "50vw", "110vw", "30vw", "-10vw"]} 
-          animateY={["-10vh", "30vh", "60vh", "20vh", "-5vh"]}
-          duration={10}
-        />
-        <Spotlight 
-          initialX="70vw" 
-          initialY="90vh" 
-          animateX={["70vw", "30vw", "-15vw", "60vw", "110vw"]} 
-          animateY={["90vh", "40vh", "25vh", "70vh", "90vh"]}
-          duration={10}
-          delay={2}
-        />
-        <Spotlight 
-          initialX="30vw" 
-          initialY="30vh" 
-          animateX={["30vw", "80vw", "-20vw", "50vw", "30vw"]} 
-          animateY={["30vh", "-5vh", "55vh", "85vh", "30vh"]}
-          duration={10}
-          delay={5}
-        />
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <button
+          onClick={goToNextSlide}
+          aria-label="Next background image"
+          className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="text-center mb-12">
-            {/* Hero Text with Rotating Words */}
+          <div className="text-left mb-12">
+            {/* Hero Text */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <h1 className="text-[2.75rem] md:text-[3.85rem] lg:text-[4.4rem] font-bold leading-[1.1] mb-7">
-                <span className="text-white">Find Your Ideal Space</span>
+              <h1 className="text-[2.25rem] md:text-[3.1rem] lg:text-[3.6rem] font-bold leading-[1.1] mb-7">
+                <span className="text-white">Find the </span>
+                <span className="inline-block bg-[#D7FF3E] text-black px-3 rounded-xl">perfect</span>
                 <br />
-                <span className="text-white ml-9 md:ml-[4.4rem] lg:ml-[12.5rem]">perfect for </span>
-                <RotatingText />
+                <span className="text-white">venue for your</span>
+                <br />
+                <span className="text-white">next event</span>
               </h1>
-              
-              <p className="text-[1.1rem] md:text-[1.32rem] text-gray-300/90 mb-9 max-w-2xl mx-auto leading-relaxed">
+
+              <p className="text-[1.1rem] md:text-[1.32rem] text-gray-200/90 mb-9 max-w-2xl leading-relaxed">
                 THE coolest new way to find spaces for ideas, communities and experiences
               </p>
             </motion.div>
@@ -347,13 +367,13 @@ export default function HomePage() {
               <div className="relative mb-4">
                 <div className="flex gap-3">
                   <div className="flex-1 relative">
-                    <Wand2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/70" />
+                    <Wand2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Try: 'Training hall for 50 people in Mumbai with projector and AC'"
-                      className="w-full bg-black/80 border border-white/40 rounded-xl pl-12 pr-4 py-4 text-white placeholder:text-white/50 focus:outline-none focus:border-white focus:ring-2 focus:ring-white/20 shadow-sm"
+                      className="w-full bg-white border border-gray-300 rounded-xl pl-12 pr-4 py-4 text-black placeholder:text-gray-500 focus:outline-none focus:border-black focus:ring-2 focus:ring-black/10 shadow-sm"
                       onKeyDown={(e) => e.key === 'Enter' && handleAISearch()}
                     />
                   </div>
@@ -466,44 +486,49 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { value: 'training-hall', label: 'Halls', image: '/img%201%20hall.jpeg' },
-              { value: 'auditorium', label: 'Auditoriums', image: '/img%202%20audi.jpeg' },
-              { value: 'workshop-space', label: 'Working Spaces', image: '/img%203%20working%20spaces.jpeg' },
-            ].map((type, index) => (
-              <motion.div
-                key={type.value}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card
-                  hover
-                  onClick={() => router.push(`/venues?type=${type.value}`)}
-                  className="relative p-8 text-center group border-2 border-border overflow-hidden h-56 flex flex-col items-center justify-center cursor-pointer"
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
+            {venueTypeCards.map((type, index) => {
+              const imgSrc = categoryImages[type.label] || type.image;
+              const isRemoteImage = imgSrc.startsWith('http');
+              return (
+                <motion.div
+                  key={type.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.08 }}
                 >
-                  {/* Background Image */}
-                  <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-all duration-500">
-                    <Image
-                      src={type.image}
-                      alt={type.label}
-                      fill
-                      className="object-cover group-hover:scale-110 transition-all duration-500"
-                    />
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 group-hover:from-black/60 group-hover:via-black/20 group-hover:to-transparent transition-all duration-500" />
-                  
-                  {/* Content */}
-                  <div className="relative z-10">
-                    <h3 className="font-bold text-white group-hover:text-primary transition-colors text-2xl drop-shadow-lg">
-                      {type.label}
-                    </h3>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
+                  <Card
+                    hover
+                    onClick={() => router.push(type.href)}
+                    className="group cursor-pointer border-0"
+                  >
+                    <div className="relative h-40 sm:h-48 lg:h-52">
+                      {isRemoteImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={imgSrc}
+                          alt={type.label}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      ) : (
+                        <Image
+                          src={imgSrc}
+                          alt={type.label}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      )}
+                    </div>
+                    <div className="px-3 py-3">
+                      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors text-sm sm:text-base">
+                        {type.label}
+                      </h3>
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -549,10 +574,11 @@ export default function HomePage() {
                   className="overflow-hidden group"
                 >
                   <div className="relative h-48 overflow-hidden">
-                    <img
+                    <WatermarkedImage
                       src={venue.image}
                       alt={venue.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      className="w-full h-full"
+                      imageClassName="object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                     <div className="absolute top-3 right-3">
                       <AIBadge score={venue.aiScore} size="sm" />
@@ -594,62 +620,42 @@ export default function HomePage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-12 md:py-14 bg-background-light">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-auto py-8 md:py-10 rounded-3xl border border-border bg-background overflow-hidden">
-            <div className="relative z-20 w-full max-w-6xl px-4 sm:px-8 mx-auto">
+      <section className="py-10 sm:py-12 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            {/* Steps */}
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">How It Works</h2>
+              <div>
+                {howItWorksSteps.map((item, index) => (
+                  <motion.div
+                    key={item.step}
+                    initial={{ opacity: 0, y: 15 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.15, duration: 0.5 }}
+                    className="flex items-start justify-between gap-4 py-4 border-b border-gray-100 last:border-0"
+                  >
+                    <div>
+                      <h3 className="text-lg font-semibold text-black mb-1">{item.title}</h3>
+                      <p className="text-sm text-gray-500">{item.description}</p>
+                    </div>
+                    <span className="text-xs text-gray-400 shrink-0 pt-1">{item.step}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* 3D rotating visual */}
+            {galleryImages.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="text-center mb-7 md:mb-8"
               >
-                <h2 className="text-3xl sm:text-4xl font-bold text-foreground">How It Works</h2>
-                <p className="text-foreground-muted max-w-2xl mx-auto mt-4">
-                  Book your perfect venue in three simple steps
-                </p>
+                <ThreeDPhotoCarousel images={galleryImages} />
               </motion.div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
-                {[
-                  {
-                    step: '01',
-                    title: 'Search & Discover',
-                    description: 'Use our AI-powered search to find venues that match your requirements perfectly.',
-                    order: 1,
-                  },
-                  {
-                    step: '02',
-                    title: 'Compare & Choose',
-                    description: 'View detailed information, photos, reviews, and AI suitability scores to make the best choice.',
-                    order: 2,
-                  },
-                  {
-                    step: '03',
-                    title: 'Book & Confirm',
-                    description: 'Complete verification, sign the contract, and get instant confirmation.',
-                    order: 3,
-                  },
-                ].map((item, index) => {
-                  return (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.12 }}
-                      style={{ order: item.order }}
-                      className="relative cursor-pointer rounded-2xl px-5 py-6 text-left bg-background-card border border-border text-foreground"
-                    >
-                      <GlowingEffect glow spread={46} proximity={140} inactiveZone={0.01} borderWidth={3} disabled={false} />
-                      <p className="text-sm font-bold mb-3 text-foreground-muted">{item.step}</p>
-                      <h3 className="text-2xl font-semibold mb-3 text-foreground">{item.title}</h3>
-                      <p className="leading-relaxed text-foreground-muted">{item.description}</p>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </section>
