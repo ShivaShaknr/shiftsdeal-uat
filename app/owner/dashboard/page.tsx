@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import QRCode from 'react-qr-code';
-import { Button, Card, Badge, Modal } from '@/components/ui';
+import { Button, Card, Badge, Modal, toast } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
 
 const tabs = [
@@ -203,12 +203,12 @@ export default function OwnerDashboardPage() {
     const capacityMax = Number(venueForm.capacityMax);
 
     if (!Number.isFinite(capacityMin) || !Number.isFinite(capacityMax) || capacityMin <= 0 || capacityMax <= 0) {
-      alert('Please enter a valid capacity range.');
+      toast.error('Please enter a valid capacity range.');
       return;
     }
 
     if (capacityMin > capacityMax) {
-      alert('Capacity min cannot be greater than capacity max.');
+      toast.error('Capacity min cannot be greater than capacity max.');
       return;
     }
 
@@ -244,7 +244,7 @@ export default function OwnerDashboardPage() {
       setSelectedVenue(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update venue inventory.';
-      alert(message);
+      toast.error(message);
     } finally {
       setSavingVenue(false);
     }
@@ -274,11 +274,11 @@ export default function OwnerDashboardPage() {
           setVenueForm((prev: any) => ({ ...prev, images: [...(prev.images || []), json.data.publicUrl] }));
         } else {
           console.warn('Upload failed', json);
-          alert('Image upload failed');
+          toast.error('Image upload failed');
         }
       } catch (err) {
         console.error('Image upload error', err);
-        alert('Image upload failed');
+        toast.error('Image upload failed');
       }
     }
   };
@@ -373,11 +373,11 @@ export default function OwnerDashboardPage() {
         console.log('✅ Booking deleted successfully');
       } else {
         console.error('❌ Failed to delete booking:', result.error);
-        alert('Failed to delete booking: ' + result.error);
+        toast.error('Failed to delete booking: ' + result.error);
       }
     } catch (error) {
       console.error('❌ Error deleting booking:', error);
-      alert('Error deleting booking');
+      toast.error('Error deleting booking');
     } finally {
       setDeletingId(null);
     }

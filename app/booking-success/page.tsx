@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { CheckCircle, Calendar, MapPin, Download, Home, ArrowRight, Hash } from 'lucide-react';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, toast } from '@/components/ui';
 import Confetti from 'react-confetti';
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
@@ -68,7 +68,7 @@ export default function BookingSuccessPage() {
 
   const downloadReceipt = () => {
     if (!receiptData) {
-      alert('Receipt data not available. Please check your bookings page.');
+      toast.error('Receipt data not available. Please check your bookings page.');
       return;
     }
 

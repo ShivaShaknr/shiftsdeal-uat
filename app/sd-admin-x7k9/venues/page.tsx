@@ -6,6 +6,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import AdminHeader from '@/components/layout/AdminHeader';
 import VenueEditModal from '@/components/admin/VenueEditModal';
 import { Check, Eye, Pencil, X } from 'lucide-react';
+import { toast } from '@/components/ui';
 
 // Icons as simple SVG components
 const Icons = {
@@ -185,14 +186,14 @@ export default function AdminVenueRequestsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Venue approved and published!');
+        toast.success('Venue approved and published!');
         setSelectedRequest(null);
         fetchRequests();
       } else {
-        alert('Error: ' + data.error);
+        toast.error('Error: ' + data.error);
       }
     } catch (error) {
-      alert('Failed to approve');
+      toast.error('Failed to approve');
     } finally {
       setProcessingId(null);
     }
@@ -200,7 +201,7 @@ export default function AdminVenueRequestsPage() {
 
   const handleReject = async (id: string) => {
     if (!rejectionReason.trim()) {
-      alert('Please provide a rejection reason');
+      toast.error('Please provide a rejection reason');
       return;
     }
     
@@ -217,16 +218,16 @@ export default function AdminVenueRequestsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Venue request rejected');
+        toast.success('Venue request rejected');
         setShowRejectModal(false);
         setSelectedRequest(null);
         setRejectionReason('');
         fetchRequests();
       } else {
-        alert('Error: ' + data.error);
+        toast.error('Error: ' + data.error);
       }
     } catch (error) {
-      alert('Failed to reject');
+      toast.error('Failed to reject');
     } finally {
       setProcessingId(null);
     }
@@ -244,15 +245,15 @@ export default function AdminVenueRequestsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Venue request updated successfully!');
+        toast.success('Venue request updated successfully!');
         setShowEditModal(false);
         setEditingRequest(null);
         fetchRequests(); // Refresh the list
       } else {
-        alert('Error: ' + data.error);
+        toast.error('Error: ' + data.error);
       }
     } catch (error) {
-      alert('Failed to update venue request');
+      toast.error('Failed to update venue request');
       console.error('Update error:', error);
     } finally {
       setIsUpdating(false);

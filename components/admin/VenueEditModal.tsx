@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { cn, formatCurrency } from '@/lib/utils';
+import { toast } from '../ui';
 
 // Icons as simple SVG components
 const Icons = {
@@ -117,7 +118,7 @@ export default function VenueEditModal({
         }
       } catch (error) {
         console.error('Image upload error:', error);
-        alert('Failed to upload image');
+        toast.error('Failed to upload image');
       } finally {
         setUploadingImages(prev => prev.filter(name => name !== fileName));
       }

@@ -16,7 +16,7 @@ import {
   Download,
   Loader2,
 } from 'lucide-react';
-import { Button, Card, Input, Badge } from '@/components/ui';
+import { Button, Card, Input, Badge, toast } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
 
 type BookingStep = 'details' | 'contract' | 'confirm';
@@ -332,7 +332,7 @@ export default function BookingPage() {
     if (!formData.eventType || !formData.eventName || !formData.attendees || 
         !formData.date || !formData.organizationName || !formData.contactName || 
         !formData.contactEmail || !formData.contactPhone) {
-      alert('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       return false;
     }
 
@@ -341,7 +341,7 @@ export default function BookingPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (selectedDate < today) {
-      alert('Event date cannot be in the past');
+      toast.error('Event date cannot be in the past');
       return false;
     }
 
@@ -352,32 +352,32 @@ export default function BookingPage() {
     const endMinutes = endHour * 60 + endMin;
     
     if (endMinutes <= startMinutes) {
-      alert('End time must be after start time');
+      toast.error('End time must be after start time');
       return false;
     }
 
     // Validate attendees
     const attendeeCount = parseInt(formData.attendees);
     if (isNaN(attendeeCount) || attendeeCount <= 0) {
-      alert('Number of attendees must be greater than 0');
+      toast.error('Number of attendees must be greater than 0');
       return false;
     }
 
     if (venue && attendeeCount > venue.capacity.max) {
-      alert(`Number of attendees (${attendeeCount}) exceeds venue capacity (${venue.capacity.max})`);
+      toast.error(`Number of attendees (${attendeeCount}) exceeds venue capacity (${venue.capacity.max})`);
       return false;
     }
 
     // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.contactEmail)) {
-      alert('Please enter a valid email address');
+      toast.error('Please enter a valid email address');
       return false;
     }
 
     // Validate phone number
     if (!PHONE_REGEX.test(formData.contactPhone)) {
-      alert('Please enter a valid 10-digit phone number');
+      toast.error('Please enter a valid 10-digit phone number');
       return false;
     }
 
@@ -392,11 +392,11 @@ export default function BookingPage() {
       setCurrentStep('contract');
     } else if (currentStep === 'contract') {
       if (!formData.contractAccepted) {
-        alert('Please accept the contract terms');
+        toast.error('Please accept the contract terms');
         return;
       }
       if (!formData.signature || formData.signature.trim().length < 3) {
-        alert('Please provide your signature');
+        toast.error('Please provide your signature');
         return;
       }
       setCurrentStep('confirm');
@@ -487,11 +487,11 @@ export default function BookingPage() {
         localStorage.setItem('lastBookingReceipt', JSON.stringify(receiptData));
         router.push('/booking-success');
       } else {
-        alert(result.error || 'Failed to create booking. Please try again.');
+        toast.error(result.error || 'Failed to create booking. Please try again.');
       }
     } catch (error) {
       console.error('Booking error:', error);
-      alert('An error occurred while creating your booking.');
+      toast.error('An error occurred while creating your booking.');
     } finally {
       setIsLoading(false);
     }
@@ -663,7 +663,7 @@ export default function BookingPage() {
                           const newEndTime = e.target.value;
                           // Validate end time is after start time
                           if (formData.startTime && newEndTime <= formData.startTime) {
-                            alert('End time must be after start time');
+                            toast.error('End time must be after start time');
                             return;
                           }
                           handleInputChange('endTime', newEndTime);

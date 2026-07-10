@@ -26,7 +26,7 @@ import {
   IndianRupee,
   Copy,
 } from 'lucide-react';
-import { Button, Card, Badge } from '@/components/ui';
+import { Button, Card, Badge, toast } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
 
 const tabs = ['all', 'pending', 'upcoming', 'completed', 'cancelled'];
@@ -255,11 +255,11 @@ export default function MyBookingsPage() {
         console.log('✅ Booking deleted successfully');
       } else {
         console.error('❌ Failed to delete booking:', result.error);
-        alert('Failed to delete booking: ' + result.error);
+        toast.error('Failed to delete booking: ' + result.error);
       }
     } catch (error) {
       console.error('❌ Error deleting booking:', error);
-      alert('Error deleting booking');
+      toast.error('Error deleting booking');
     } finally {
       setDeletingId(null);
     }
@@ -287,7 +287,7 @@ export default function MyBookingsPage() {
     const scriptLoaded = await loadRazorpayScript();
   
     if (!scriptLoaded) {
-      alert("Razorpay SDK failed to load");
+      toast.error("Razorpay SDK failed to load");
       return;
     }
   
@@ -298,7 +298,7 @@ export default function MyBookingsPage() {
     const result = await response.json();
   
     if (!result.success) {
-      alert(result.error || "Failed to create payment order");
+      toast.error(result.error || "Failed to create payment order");
       return;
     }
   
@@ -331,9 +331,9 @@ export default function MyBookingsPage() {
         const verifyResult = await verifyResponse.json();
   
         if (verifyResult.success) {
-          alert("Payment successful");
+          toast.success("Payment successful");
         } else {
-          alert(verifyResult.error || "Payment verification failed");
+          toast.error(verifyResult.error || "Payment verification failed");
         }
       },
       modal: {
@@ -626,7 +626,7 @@ export default function MyBookingsPage() {
                                                <button 
                                                  onClick={() => {
                                                    navigator.clipboard.writeText('shiftsdeal@upi');
-                                                   alert('UPI ID copied!');
+                                                   toast.success('UPI ID copied!');
                                                  }}
                                                  className="text-primary hover:text-primary/80"
                                                >

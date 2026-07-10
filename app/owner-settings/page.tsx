@@ -14,7 +14,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { Button, Card, Input } from '@/components/ui';
+import { Button, Card, Input, toast } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 type PaymentMethod = 'upi' | 'bank';
@@ -138,11 +138,11 @@ export default function OwnerSettingsPage() {
 
   const validateContact = () => {
     if (!paymentContactEmail.trim()) {
-      alert('Please enter a contact email for payment updates');
+      toast.error('Please enter a contact email for payment updates');
       return false;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentContactEmail.trim())) {
-      alert('Please enter a valid email address');
+      toast.error('Please enter a valid email address');
       return false;
     }
     return true;
@@ -151,20 +151,20 @@ export default function OwnerSettingsPage() {
   const validatePayout = () => {
     if (paymentMethod === 'upi') {
       if (!upiId.trim()) {
-        alert('Please enter your UPI ID');
+        toast.error('Please enter your UPI ID');
         return false;
       }
       if (!/^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim())) {
-        alert('Please enter a valid UPI ID');
+        toast.error('Please enter a valid UPI ID');
         return false;
       }
     } else {
       if (!accountNumber.trim() || !confirmAccountNumber.trim() || !ifsc.trim() || !beneficiaryName.trim()) {
-        alert('Please fill all bank details');
+        toast.error('Please fill all bank details');
         return false;
       }
       if (accountNumber.trim() !== confirmAccountNumber.trim()) {
-        alert('Account numbers do not match');
+        toast.error('Account numbers do not match');
         return false;
       }
     }
@@ -237,10 +237,10 @@ export default function OwnerSettingsPage() {
         setIsSavedView(true);
         setCurrentStep('confirm');
       } else {
-        alert(result.error || 'Failed to save');
+        toast.error(result.error || 'Failed to save');
       }
     } catch {
-      alert('Failed to save payment details');
+      toast.error('Failed to save payment details');
     } finally {
       setSaving(false);
     }

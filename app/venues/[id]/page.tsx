@@ -23,7 +23,7 @@ import {
   Info,
   X,
 } from 'lucide-react';
-import { Button, Card, AIBadge, Badge, Modal, VenueDetailSkeleton, VenueMap } from '@/components/ui';
+import { Button, Card, AIBadge, Badge, Modal, VenueDetailSkeleton, VenueMap, toast } from '@/components/ui';
 import { formatCurrency, formatTime, cn, amenitiesList } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/AuthContext';
 
@@ -114,12 +114,12 @@ export default function VenueDetailPage() {
     if (userRequirements.attendees) {
       const attendeeCount = parseInt(userRequirements.attendees);
       if (isNaN(attendeeCount) || attendeeCount <= 0) {
-        alert('Number of attendees must be greater than 0');
+        toast.error('Number of attendees must be greater than 0');
         return false;
       }
 
       if (venue && attendeeCount > venue.capacity.max) {
-        alert(`Number of attendees (${attendeeCount}) exceeds venue capacity (${venue.capacity.max})`);
+        toast.error(`Number of attendees (${attendeeCount}) exceeds venue capacity (${venue.capacity.max})`);
         return false;
       }
     }
@@ -130,7 +130,7 @@ export default function VenueDetailPage() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (selectedDate < today) {
-        alert('Event date cannot be in the past');
+        toast.error('Event date cannot be in the past');
         return false;
       }
     }
@@ -143,7 +143,7 @@ export default function VenueDetailPage() {
     
     // Basic validation for AI analysis (need at least event type and attendees)
     if (!userRequirements.eventType || !userRequirements.attendees) {
-      alert('Please fill in event type and number of attendees for AI analysis');
+      toast.error('Please fill in event type and number of attendees for AI analysis');
       return;
     }
     

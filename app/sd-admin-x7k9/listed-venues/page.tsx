@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { formatCurrency, cn } from '@/lib/utils';
 import AdminHeader from '@/components/layout/AdminHeader';
 import VenueEditModal from '@/components/admin/VenueEditModal';
+import { toast } from '@/components/ui';
 
 // Icons as simple SVG components
 const Icons = {
@@ -238,14 +239,14 @@ export default function AdminVenuesListPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Venue hidden successfully');
+        toast.success('Venue hidden successfully');
         fetchVenues();
         setSelectedVenue(null);
       } else {
-        alert('Error: ' + data.error);
+        toast.error('Error: ' + data.error);
       }
     } catch (error) {
-      alert('Failed to hide venue');
+      toast.error('Failed to hide venue');
     } finally {
       setProcessingId(null);
     }
@@ -261,14 +262,14 @@ export default function AdminVenuesListPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Venue is now visible');
+        toast.success('Venue is now visible');
         fetchVenues();
         setSelectedVenue(null);
       } else {
-        alert('Error: ' + data.error);
+        toast.error('Error: ' + data.error);
       }
     } catch (error) {
-      alert('Failed to show venue');
+      toast.error('Failed to show venue');
     } finally {
       setProcessingId(null);
     }
@@ -284,14 +285,14 @@ export default function AdminVenuesListPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Venue deleted successfully');
+        toast.success('Venue deleted successfully');
         fetchVenues();
         setSelectedVenue(null);
       } else {
-        alert('Error: ' + data.error);
+        toast.error('Error: ' + data.error);
       }
     } catch (error) {
-      alert('Failed to delete venue');
+      toast.error('Failed to delete venue');
     } finally {
       setProcessingId(null);
     }
@@ -309,16 +310,16 @@ export default function AdminVenuesListPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Venue updated successfully!');
+        toast.success('Venue updated successfully!');
         setShowEditModal(false);
         setEditingVenue(null);
         fetchVenues(); // Refresh the list
         setSelectedVenue(null); // Close detail modal if open
       } else {
-        alert('Error: ' + data.error);
+        toast.error('Error: ' + data.error);
       }
     } catch (error) {
-      alert('Failed to update venue');
+      toast.error('Failed to update venue');
       console.error('Update error:', error);
     } finally {
       setIsUpdating(false);
