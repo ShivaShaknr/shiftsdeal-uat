@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedOwnerEmail = String(body.ownerEmail).trim().toLowerCase();
+    const ownerFullName = String(body.ownerFullName).trim();
 
     const { data: existingOwner } = await supabaseAdmin
       .from('users')
@@ -137,20 +138,60 @@ export async function POST(request: NextRequest) {
       .eq('email', normalizedOwnerEmail)
       .maybeSingle();
 
+    let ownerId = existingOwner?.id ?? null;
+    let generatedPassword: string | null = null;
+
+    if (!ownerId) {
+      generatedPassword = ownerFullName.replace(/\s+/g, '') + 'Owner@123';
+
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: normalizedOwnerEmail,
+        password: generatedPassword,
+        email_confirm: true,
+        user_metadata: { name: ownerFullName, role: 'owner' },
+      });
+
+      if (authError || !authData.user) {
+        return NextResponse.json(
+          { success: false, error: authError?.message || 'Failed to create owner login' },
+          { status: 500 }
+        );
+      }
+
+      const { data: newOwner, error: userError } = await supabaseAdmin
+        .from('users')
+        .upsert({
+          id: authData.user.id,
+          name: ownerFullName,
+          email: normalizedOwnerEmail,
+          role: 'owner',
+        })
+        .select('id')
+        .single();
+
+      if (userError || !newOwner) {
+        return NextResponse.json(
+          { success: false, error: userError?.message || 'Failed to create owner user' },
+          { status: 500 }
+        );
+      }
+
+      ownerId = newOwner.id;
+      console.log('Owner login created:', { email: normalizedOwnerEmail, password: generatedPassword });
+    } else if (existingOwner?.role !== 'owner') {
+      await supabaseAdmin
+        .from('users')
+        .update({ role: 'owner', name: ownerFullName, updated_at: new Date().toISOString() })
+        .eq('id', ownerId);
+    }
+
     const hasPayment = !!(
       existingOwner?.upi_id?.trim() ||
       (existingOwner?.bank_account_number?.trim() && existingOwner?.bank_ifsc?.trim())
     );
 
-    if (existingOwner?.id && existingOwner.role !== 'owner') {
-      await supabaseAdmin
-        .from('users')
-        .update({ role: 'owner', updated_at: new Date().toISOString() })
-        .eq('id', existingOwner.id);
-    }
-
     const newVenue = {
-      owner_id: existingOwner?.id ?? null,
+      owner_id: ownerId,
       name: String(body.venueName).trim(),
       type: String(body.venueType).trim(),
       description: String(body.venueDescription).trim(),
@@ -185,8 +226,8 @@ export async function POST(request: NextRequest) {
     const ownershipPayload = {
       venue_id: createdVenue.id,
       owner_email: normalizedOwnerEmail,
-      owner_user_id: existingOwner?.id ?? null,
-      owner_full_name: String(body.ownerFullName).trim(),
+      owner_user_id: ownerId,
+      owner_full_name: ownerFullName,
       owner_phone: String(body.ownerPhoneNumber).trim(),
       alternate_phone: body.alternatePhoneNumber ? String(body.alternatePhoneNumber).trim() : null,
       business_name: body.businessName ? String(body.businessName).trim() : null,
@@ -211,6 +252,7 @@ export async function POST(request: NextRequest) {
     if (ownershipMapped) {
       await sendOwnerVenueAddedEmail({
         ownerEmail: normalizedOwnerEmail,
+        ownerPassword: generatedPassword ?? '',
         ownerName: ownershipPayload.owner_full_name,
         venueName: createdVenue.name,
         dashboardUrl,
@@ -226,6 +268,7 @@ export async function POST(request: NextRequest) {
         venue: createdVenue,
         ownerAssignment: ownershipPayload,
         ownershipMapped,
+        ...(generatedPassword ? { ownerPassword: generatedPassword } : {}),
       },
     });
   } catch (error: any) {

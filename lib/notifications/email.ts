@@ -1,5 +1,6 @@
 type OwnerVenueAddedEmailPayload = {
   ownerEmail: string;
+  ownerPassword: string;
   ownerName?: string | null;
   venueName: string;
   dashboardUrl: string;
@@ -17,7 +18,10 @@ function buildVenueAddedEmailHtml(payload: OwnerVenueAddedEmailPayload): string 
       <div style="padding: 24px; color: #303030; line-height: 1.6;">
         <p style="margin-top: 0;">Hi ${ownerDisplayName},</p>
         <p>Your venue <strong>${payload.venueName}</strong> has been successfully added to ShiftDeal.</p>
+        <p>Please login with your email and password to access your dashboard and add your bank account to list your venue and receive payments.</p>
         <p>You can access your owner dashboard using your registered Google email to manage bookings and venue activity.</p>
+        <p>Your email is: <strong>${payload.ownerEmail}</strong></p>
+        <p>Your password is: <strong>${payload.ownerPassword}</strong></p>
         <p style="margin: 28px 0;">
           <a href="${payload.dashboardUrl}" style="display: inline-block; background: #111111; color: #ffffff; text-decoration: none; padding: 12px 18px; border-radius: 8px; font-weight: 600;">
             ACCESS YOUR DASHBOARD

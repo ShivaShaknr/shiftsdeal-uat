@@ -898,6 +898,8 @@ export default function OwnerDashboardPage() {
                             {venue.availability || 'Available'}
                           </Badge>
                           <div className="flex items-center gap-2">
+                          {venue.availability === 'available' && (
+                            <>
                             <Button
                               size="sm"
                               variant="secondary"
@@ -914,6 +916,8 @@ export default function OwnerDashboardPage() {
                               <Share2 className="w-4 h-4 mr-1" />
                               Share Link
                             </Button>
+                            </>
+                            )}
                             <Button size="sm" onClick={() => openInventoryModal(venue)} className="whitespace-nowrap">
                               <Pencil className="w-4 h-4 mr-1" />
                               Edit
@@ -1223,23 +1227,23 @@ export default function OwnerDashboardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm text-foreground-muted block mb-2">Booking Slots</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
-                  value={venueForm.bookingSlots}
-                  onChange={(e) => setVenueForm((prev: any) => ({ ...prev, bookingSlots: e.target.value }))}
-                  placeholder="Morning, Afternoon, Evening"
-                />
-              </div>
+            <div>
+              <label className="text-sm text-foreground-muted block mb-2">Booking Slots</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                value={venueForm.bookingSlots}
+                onChange={(e) => setVenueForm((prev: any) => ({ ...prev, bookingSlots: e.target.value }))}
+                placeholder="Morning, Afternoon, Evening"
+              />
+            </div>
 
-              <div>
-                <label className="text-sm text-foreground-muted block mb-2">Blocked Dates</label>
-                <div className="flex flex-wrap gap-2 mb-3">
+            <div>
+              <label className="text-sm text-foreground-muted block mb-2">Blocked Dates</label>
+              {(venueForm.blockedDates || []).length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
                   {(venueForm.blockedDates || []).map((d: string, i: number) => (
-                    <span key={i} className="inline-flex items-center gap-2 px-3 py-1 bg-background-light rounded-full text-sm text-foreground">
+                    <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-background-light rounded-full text-sm text-foreground">
                       {d}
                       <button type="button" onClick={() => handleRemoveBlockedDate(i)} className="text-red-400 hover:text-red-500">
                         <X className="w-3 h-3" />
@@ -1247,18 +1251,16 @@ export default function OwnerDashboardPage() {
                     </span>
                   ))}
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    className="flex-1 px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
-                    onChange={(e) => {
-                      if (e.target.value) handleAddBlockedDate(e.target.value);
-                      e.currentTarget.value = '';
-                    }}
-                  />
-                  <p className="text-sm text-foreground-muted">Use the date picker to add blocked dates.</p>
-                </div>
-              </div>
+              )}
+              <input
+                type="date"
+                className="w-full h-10 px-3 py-2 rounded-lg border border-border bg-background-light text-foreground"
+                onChange={(e) => {
+                  if (e.target.value) handleAddBlockedDate(e.target.value);
+                  e.currentTarget.value = '';
+                }}
+              />
+              <p className="text-xs text-foreground-muted mt-1.5">Use the date picker to add blocked dates.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -1349,24 +1351,28 @@ export default function OwnerDashboardPage() {
               <div>
                 <label className="text-sm text-foreground-muted block mb-2">Images</label>
 
-                <div className="grid grid-cols-4 gap-3 mb-3">
-                  {(venueForm.images || []).map((img: string, idx: number) => (
-                    <div key={idx} className="relative group">
-                      <img src={img} alt={`img-${idx}`} className="w-full aspect-video object-cover rounded-lg border border-border" />
-                      <button type="button" onClick={() => handleRemoveImage(idx)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                {(venueForm.images || []).length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mb-3 sm:grid-cols-4">
+                    {(venueForm.images || []).map((img: string, idx: number) => (
+                      <div key={idx} className="relative group">
+                        <img src={img} alt={`img-${idx}`} className="w-full aspect-video object-cover rounded-lg border border-border" />
+                        <button type="button" onClick={() => handleRemoveImage(idx)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*" onChange={(e) => handleImageUpload(e.target.files)} />
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-background-light border border-border rounded-lg">
-                    Upload Images
-                  </button>
-                  <p className="text-sm text-foreground-muted">Upload images directly — no URL copying required.</p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-10 px-4 py-2 bg-background-light border border-border rounded-lg text-sm text-foreground hover:bg-background-card transition-colors"
+                >
+                  Upload Images
+                </button>
+                <p className="text-xs text-foreground-muted mt-1.5">Upload images directly — no URL copying required.</p>
               </div>
             </div>
 
