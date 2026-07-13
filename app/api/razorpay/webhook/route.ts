@@ -421,6 +421,8 @@ async function handlePaymentCaptured(event: any) {
             amount: payment.amount,
             razorpayPaymentId: payment.id,
             razorpayOrderId: payment.order_id,
+            address: venueAddress,
+            venueName: venue?.name,
           }),
           attachments: [
             {
@@ -438,6 +440,7 @@ async function handlePaymentCaptured(event: any) {
               contactName: booking.contact_name,
               eventName: booking.event_name,
               amount: payment.amount,
+              bookingId: bookingId,
             }),
           });
         }
@@ -587,6 +590,7 @@ async function handlePayoutStatusUpdate(event: any) {
         contactName: booking.contact_name,
         eventName: booking.event_name,
         amount: payout.amount,
+        bookingId: bookingId,
       }),
     });
     await sendWhatsAppTemplate({

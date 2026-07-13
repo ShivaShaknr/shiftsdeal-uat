@@ -12,113 +12,91 @@ export function venueCommisionSuccessEmail({
     razorpayOrderId?: string;
   }) {
     return `
-       <div style="background:#f6f7fb;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-        <div style="max-width:650px;margin:0 auto;background:#ffffff;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 8px 24px rgba(0,0,0,0.06);">
+     <div style="margin:0;padding:32px 12px;background:#f3f4f6;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <div style="max-width:620px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 12px 35px rgba(0,0,0,0.08);">
 
+    <!-- Header -->
 
-          <!-- Header -->
-          <div style="background:#14532d;padding:28px 20px;color:#ffffff;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-              <tr>
-                <td align="left" style="vertical-align:top;">
-                  <h1 style="margin:0;font-size:18px;font-weight:700;letter-spacing:-0.3px;color:#ffffff;">
-                    Commission Credited
-                  </h1>
-
-                  <p style="margin:8px 0 0;font-size:12px;color:#dcfce7;line-height:1.5;">
-                    Your commission has been credited successfully.
-                  </p>
-                </td>
-              </tr>
-            </table>
-          </div>
-
-          <!-- Body -->
-          <div style="padding:20px;">
-            <img 
-              src="https://www.shiftsdeal.com/_next/image?url=%2Flogo-light.png&w=256&q=75" 
-              alt="ShiftsDeal" 
-              style="width:120px" 
-            />
-            <br>
-            <br>
-            <p style="font-size:13px;color:#111827;margin:0 0 16px;">
-              Hi <strong>${ownerName || "Owner"}</strong>,
-            </p>
-
-            <p style="font-size:12px;line-height:1.6;color:#4b5563;margin:0 0 24px;">
-              Your commission has been credited to your account successfully. Please check your account balance.
-            </p>
-
-            <!-- Amount Box -->
-            <div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:22px 20px;margin-bottom:24px;text-align:center;">
-              <div style="display:inline-block;background:#dcfce7;color:#166534;font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;padding:6px 12px;margin-bottom:12px;">
-                Amount Credited
-              </div>
-
-              <div style="font-size:20px;line-height:1.2;color:#15803d;font-weight:800;margin:0;">
-                ₹${amount ? amount / 100 : 0}
-              </div>
-
-              <p style="font-size:11px;color:#4b5563;margin:10px 0 0;">
-                Commission credited successfully
-              </p>
-            </div>
-
-            <!-- Details -->
-            <div style="border:1px solid #e5e7eb;overflow:hidden;margin-bottom:24px;">
-              <div style="display:flex;padding:14px 18px;background:#f9fafb;border-bottom:1px solid #e5e7eb;">
-                <div style="width:42%;font-size:11px;color:#6b7280;">Event</div>
-                <div style="width:58%;font-size:11px;color:#111827;font-weight:600;">
-                  ${eventName || "-"}
-                </div>
-              </div>
-
-              <div style="display:flex;padding:14px 18px;border-bottom:1px solid #e5e7eb;">
-                <div style="width:42%;font-size:11px;color:#6b7280;">Amount Credited</div>
-                <div style="width:58%;font-size:11px;color:#15803d;font-weight:700;">
-                  ₹${amount ? amount / 100 : 0}
-                </div>
-              </div>
-
-              <div style="display:flex;padding:14px 18px;background:#f9fafb;border-bottom:1px solid #e5e7eb;">
-                <div style="width:42%;font-size:11px;color:#6b7280;">Payment ID</div>
-                <div style="width:58%;font-size:11px;color:#111827;font-weight:600;word-break:break-all;">
-                  ${razorpayPaymentId || "-"}
-                </div>
-              </div>
-
-              <div style="display:flex;padding:14px 18px;">
-                <div style="width:42%;font-size:11px;color:#6b7280;">Order ID</div>
-                <div style="width:58%;font-size:11px;color:#111827;font-weight:600;word-break:break-all;">
-                  ${razorpayOrderId || "-"}
-                </div>
-              </div>
-            </div>
-
-            <!-- Note -->
-            <div style="background:#f9fafb;border:1px solid #bbf7d0;padding:16px;margin-bottom:24px;">
-              <p style="font-size:12px;line-height:1.6;color:#166534;margin:0;">
-                Note: In case of any issue, please contact the support team.
-              </p>
-            </div>
-
-            <p style="font-size:11px;color:#111827;margin:0;">
-              Thank you for using <strong>ShiftsDeal</strong>.
-            </p>
-          </div>
-
-          <!-- Footer -->
-          <div style="background:#f9fafb;padding:20px 32px;border-top:1px solid #e5e7eb;text-align:center;">
-            <p style="font-size:10px;color:#6b7280;margin:0 0 6px;">
-              This is an automated email. Please do not reply.
-            </p>
-            <p style="font-size:10px;color:#9ca3af;margin:0;">
-              © ShiftsDeal
-            </p>
-          </div>
-
-        </div>
+    <div style="padding:32px 30px 24px;text-align:center;background:#ffffff;">
+      <img
+        src="https://www.shiftsdeal.com/_next/image?url=%2Flogo-light.png&w=256&q=75"
+        alt="ShiftsDeal"
+        style="display:block;width:180px;height:auto;margin:0 auto 28px;"
+      />
+      <div style="width:72px;height:72px;line-height:72px;margin:0 auto 18px;background:#ecfdf3;border-radius:50%;color:#16803c;font-size:28px;font-weight:700;">
+        <img src="https://cdn-icons-png.flaticon.com/512/7518/7518748.png" alt="Check" style="width:100%;height:100%;" />
       </div>
+      <h1 style="margin:0;color:#111827;font-size:18px;line-height:1.3;font-weight:700;">
+        Venue Commision Credited
+      </h1>
+      <p style="margin:10px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">
+        Your venue commision has been credited to your account.
+      </p>
+    </div>
+
+    <!-- Body -->
+
+    <div style="padding:0 30px 32px;">
+      <p style="margin:0 0 20px;color:#374151;font-size:13px;line-height:1.7;">
+        Hi <strong style="color:#111827;">${ownerName || "Owner"}</strong>,
+        <br />
+        <br />
+        Your venue commision has been credited to your account.
+      </p>
+
+      <!-- Amount -->
+
+      <div style="padding:26px 20px;margin-bottom:22px;background:#111827;border-radius:14px;text-align:center;">
+        <p style="margin:0 0 8px;color:#d1d5db;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">
+          Venue Commision
+        </p>
+        <div style="margin:0;color:#ffffff;font-size:30px;line-height:1.2;font-weight:800;">
+          ₹${((amount || 0) / 100).toLocaleString("en-IN")}
+        </div>
+        <p style="margin:10px 0 0;color:#86efac;font-size:11px;font-weight:600;">
+          Venue commision credited successfully
+        </p>
+      </div>
+
+      <!-- Event -->
+
+      <div style="padding:17px 18px;margin-bottom:10px;border-radius:12px;">
+        <p style="margin:0 0 6px;color:#9ca3af;font-size:10px;font-weight:700;letter-spacing:0.7px;text-transform:uppercase;">
+          Event
+        </p>
+        <p style="margin:0;color:#111827;font-size:13px;line-height:1.5;font-weight:600;">
+          ${eventName || "-"}
+        </p>
+      </div>
+
+      <!-- Payment ID -->
+
+      <div style="padding:17px 18px;margin-bottom:10px;border-radius:12px;">
+        <p style="margin:0 0 6px;color:#9ca3af;font-size:10px;font-weight:700;letter-spacing:0.7px;text-transform:uppercase;">
+          Payment ID
+        </p>
+        <p style="margin:0;color:#111827;font-size:12px;line-height:1.5;font-weight:600;word-break:break-all;">
+          ${razorpayPaymentId || "-"}
+        </p>
+      </div>
+
+      <!-- Order ID -->
+
+      <div style="padding:17px 18px;margin-bottom:10px;border-radius:12px;">
+        <p style="margin:0 0 6px;color:#9ca3af;font-size:10px;font-weight:700;letter-spacing:0.7px;text-transform:uppercase;">
+          Order ID
+        </p>
+        <p style="margin:0;color:#111827;font-size:12px;line-height:1.5;font-weight:600;word-break:break-all;">
+          ${razorpayOrderId || "-"}
+        </p>
+      </div>
+
+      <p style="margin:24px 0 0;color:#4b5563;font-size:12px;line-height:1.7;">
+        Thank you,<br />
+            <strong style="color:#111827;">The ShiftsDeal Team</strong>
+          </p>
+        </div>   
+      </div>
+    </div>
     `;
   }

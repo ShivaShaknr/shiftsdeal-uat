@@ -45,7 +45,9 @@ type TemplateParam =
   | TemplateVideoParam;
 
 type TemplateComponent = {
-  type: "header" | "body";
+  type: "header" | "body" | "button";
+  sub_type?: "url" | "quick_reply";
+  index?: string;
   parameters: TemplateParam[];
 };
 

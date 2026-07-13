@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendMail } from '@/lib/communication/sendMail';
 import { venueApprovedEmail } from '@/lib/communication/emailTemplates/venueApprovedEmail';
 import { venueRejectedEmail } from '@/lib/communication/emailTemplates/venueRejectedEmail';
+import { sendWhatsAppTemplate } from '@/lib/communication/whatsapp/whatsapp';
 
 // Use service role key for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
@@ -126,6 +127,28 @@ export async function PATCH(
         console.error('Booking approval email failed:', emailError);
       }
     }
+
+    if (status === 'confirmed' && booking.contact_phone) {
+      try {
+        await sendWhatsAppTemplate({
+          to: `91${booking.contact_phone}`,
+          templateName: 'booking_approved',
+          languageCode: 'en',
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: booking.contact_name || 'Customer' },
+                { type: 'text', text: booking.venues?.name || 'Venue' },
+                { type: 'text', text: booking.event_name || 'Event' },
+              ],
+            },
+          ],
+        });
+      } catch (whatsappError) {
+        console.error('Booking approval WhatsApp failed:', whatsappError);
+      }
+    }
     if (status === 'cancelled' && booking.contact_email) {
       try {
         await sendMail({
@@ -139,6 +162,26 @@ export async function PATCH(
         });
       } catch (emailError) {
         console.error('Booking cancellation email failed:', emailError);
+      }
+    }
+    if (status === 'cancelled' && booking.contact_phone) {
+      try {
+        await sendWhatsAppTemplate({
+          to: `91${booking.contact_phone}`,
+          templateName: 'booking_rejected',
+          languageCode: 'en',
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: booking.contact_name || 'Customer' },
+                { type: 'text', text: booking.venues?.name || 'Venue' },
+              ],
+            },
+          ],
+        });
+      } catch (whatsappError) {
+        console.error('Booking cancellation WhatsApp failed:', whatsappError);
       }
     }
 
