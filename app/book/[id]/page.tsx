@@ -228,7 +228,7 @@ export default function BookingPage() {
         sections: [
           {
             heading: '1. Parties to the Agreement',
-            content: `This Venue Booking Agreement ("Agreement") is entered into on ${new Date().toLocaleDateString()} between:\n\nVenue Owner: ${venue?.name}\nAddress: ${venue?.address.street}, ${venue?.address.city}, ${venue?.address.state} ${venue?.address.pincode}\n\nand\n\nRenter: ${formData.organizationName}\nContact Person: ${formData.contactName}\nEmail: ${formData.contactEmail}\nPhone: ${formData.contactPhone}`,
+            content: `This Venue Booking Agreement ("Agreement") is entered into on ${new Date().toLocaleDateString()} between:\n\nVenue Owner: ${venue?.name}\nAddress: ${venue?.address.city}, ${venue?.address.state} ${venue?.address.pincode}\n\nand\n\nRenter: ${formData.organizationName}\nContact Person: ${formData.contactName}\nEmail: ${formData.contactEmail}\nPhone: ${formData.contactPhone}`,
           },
           {
             heading: '2. Event Details',
@@ -236,7 +236,7 @@ export default function BookingPage() {
           },
           {
             heading: '3. Venue Description',
-            content: `The venue "${venue?.name}" located at ${venue?.address.street}, ${venue?.address.city} with a maximum capacity of ${venue?.capacity.max} persons is hereby booked for the above-mentioned event.`,
+            content: `The venue "${venue?.name}" located at ${venue?.address.city} with a maximum capacity of ${venue?.capacity.max} persons is hereby booked for the above-mentioned event.`,
           },
           {
             heading: '4. Payment Terms',

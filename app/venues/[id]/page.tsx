@@ -350,8 +350,8 @@ export default function VenueDetailPage() {
             {/* Header */}
             <div>
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                {venue.isVerified && <Badge variant="success">Verified</Badge>}
-                <Badge>{venue.type.replace('-', ' ')}</Badge>
+                {venue.isVerified && <Badge variant="success" className='capitalize'>Verified</Badge>}
+                <Badge className='capitalize'>{venue.type.replace('-', ' ')}</Badge>
                 {venue.aiScore && venue.aiScore >= 90 && (
                   <AIBadge score={venue.aiScore} label="AI Top Pick" />
                 )}
@@ -360,7 +360,8 @@ export default function VenueDetailPage() {
               <div className="flex flex-wrap items-center gap-4 text-foreground-muted">
                 <div className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
-                  {venue.address.street}, {venue.address.city}
+                  {venue.address.city}, {venue.address.state} {venue.address.pincode}
+                  {/* {venue.address.street}, {venue.address.city} */}
                 </div>
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
@@ -390,7 +391,7 @@ export default function VenueDetailPage() {
                     className="flex items-center gap-2 p-3 bg-background-card rounded-xl border border-border"
                   >
                     <Check className="w-4 h-4 text-primary" />
-                    <span className="text-sm text-foreground">{amenity}</span>
+                    <span className="text-sm text-foreground capitalize">{amenity}</span>
                   </div>
                 ))}
               </div>
@@ -403,8 +404,8 @@ export default function VenueDetailPage() {
                 <div className="flex items-start gap-2">
                   <MapPin className="w-5 h-5 text-primary mt-0.5" />
                   <div>
-                    <p className="text-foreground font-medium">{venue.address.street}</p>
-                    <p className="text-foreground-muted">{venue.address.city}, {venue.address.state} {venue.address.pincode}</p>
+                    <p className="text-foreground font-medium capitalize">{venue.address.city}</p>
+                    <p className="text-foreground-muted capitalize">{venue.address.state} {venue.address.pincode}</p>
                   </div>
                 </div>
                 <div className="rounded-2xl overflow-hidden border border-border">

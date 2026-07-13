@@ -65,7 +65,7 @@ Date Generated: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month
                               VENUE DETAILS
 --------------------------------------------------------------------------------
 Venue Name:      ${venueDetails?.name || 'N/A'}
-Address:         ${venueDetails?.address?.street || ''}, ${venueDetails?.address?.city || ''}, ${venueDetails?.address?.state || ''}
+Address:         ${venueDetails?.address?.city || ''}, ${venueDetails?.address?.state || ''}
 
 --------------------------------------------------------------------------------
                              BOOKING DETAILS
