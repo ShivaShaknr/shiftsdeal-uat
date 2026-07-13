@@ -9,6 +9,7 @@ export { default as Badge } from './Badge';
 export { default as Modal } from './Modal';
 export { default as WebcamCapture } from './WebcamCapture';
 export { default as Toaster, toast } from './Toaster';
+export { default as Confirm } from './confirm';
 export { VenueMap } from './VenueMap';
 export { AuroraBackground } from './aurora-background';
 export { ContainerScroll } from './container-scroll-animation';

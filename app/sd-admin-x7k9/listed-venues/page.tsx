@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { formatCurrency, cn } from '@/lib/utils';
 import AdminHeader from '@/components/layout/AdminHeader';
 import VenueEditModal from '@/components/admin/VenueEditModal';
-import { toast } from '@/components/ui';
+import { toast, Confirm } from '@/components/ui';
 
 // Icons as simple SVG components
 const Icons = {
@@ -138,6 +138,7 @@ export default function AdminVenuesListPage() {
   const [cityFilter, setCityFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'hide' | 'delete'; id: string } | null>(null);
 
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -228,8 +229,6 @@ export default function AdminVenuesListPage() {
   }, [searchQuery]);
 
   const handleHideVenue = async (id: string) => {
-    if (!confirm('Hide this venue? It will not appear in search results.')) return;
-    
     setProcessingId(id);
     try {
       const res = await fetch(`/api/sd-admin/venues/${id}`, {
@@ -242,6 +241,7 @@ export default function AdminVenuesListPage() {
         toast.success('Venue hidden successfully');
         fetchVenues();
         setSelectedVenue(null);
+        setConfirmAction(null);
       } else {
         toast.error('Error: ' + data.error);
       }
@@ -276,8 +276,6 @@ export default function AdminVenuesListPage() {
   };
 
   const handleDeleteVenue = async (id: string) => {
-    if (!confirm('DELETE this venue? This action cannot be undone. Only venues with no bookings can be deleted.')) return;
-    
     setProcessingId(id);
     try {
       const res = await fetch(`/api/sd-admin/venues/${id}`, {
@@ -288,6 +286,7 @@ export default function AdminVenuesListPage() {
         toast.success('Venue deleted successfully');
         fetchVenues();
         setSelectedVenue(null);
+        setConfirmAction(null);
       } else {
         toast.error('Error: ' + data.error);
       }
@@ -572,7 +571,7 @@ export default function AdminVenuesListPage() {
                   </button>
                   {venue.availability === 'available' ? (
                     <button
-                      onClick={() => handleHideVenue(venue.id)}
+                      onClick={() => setConfirmAction({ type: 'hide', id: venue.id })}
                       disabled={processingId === venue.id}
                       className="flex items-center justify-center gap-1 px-3 py-2 bg-yellow-500/10 text-yellow-400 rounded-lg hover:bg-yellow-500/20 text-sm disabled:opacity-50 cursor-pointer"
                     >
@@ -588,7 +587,7 @@ export default function AdminVenuesListPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => handleDeleteVenue(venue.id)}
+                    onClick={() => setConfirmAction({ type: 'delete', id: venue.id })}
                     disabled={processingId === venue.id}
                     className="flex items-center justify-center gap-1 px-3 py-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 text-sm disabled:opacity-50 cursor-pointer"
                   >
@@ -713,7 +712,7 @@ export default function AdminVenuesListPage() {
                 </button>
                 {selectedVenue.availability === 'available' ? (
                   <button
-                    onClick={() => handleHideVenue(selectedVenue.id)}
+                    onClick={() => setConfirmAction({ type: 'hide', id: selectedVenue.id })}
                     disabled={processingId === selectedVenue.id}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/20 disabled:opacity-50"
                   >
@@ -731,7 +730,7 @@ export default function AdminVenuesListPage() {
                   </button>
                 )}
                 <button
-                  onClick={() => handleDeleteVenue(selectedVenue.id)}
+                  onClick={() => setConfirmAction({ type: 'delete', id: selectedVenue.id })}
                   disabled={processingId === selectedVenue.id}
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/20 disabled:opacity-50"
                 >
@@ -758,6 +757,25 @@ export default function AdminVenuesListPage() {
           isLoading={isUpdating}
         />
       )}
+
+      <Confirm
+        isOpen={!!confirmAction}
+        title={confirmAction?.type === 'delete' ? 'Delete Venue' : 'Hide Venue'}
+        message={
+          confirmAction?.type === 'delete'
+            ? 'DELETE this venue? This action cannot be undone. Only venues with no bookings can be deleted.'
+            : 'Hide this venue? It will not appear in search results.'
+        }
+        confirmText={confirmAction?.type === 'delete' ? 'Delete' : 'Hide'}
+        cancelText="Cancel"
+        loading={!!processingId}
+        onConfirm={() => {
+          if (!confirmAction) return;
+          if (confirmAction.type === 'hide') handleHideVenue(confirmAction.id);
+          else handleDeleteVenue(confirmAction.id);
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 }

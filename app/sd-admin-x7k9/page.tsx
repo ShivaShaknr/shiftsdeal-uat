@@ -4,6 +4,7 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatCurrency, cn, formatDate, formatTimeRange } from '@/lib/utils';
 import AdminHeader from '@/components/layout/AdminHeader';
+import { Confirm } from '@/components/ui';
 
 // Icons as simple SVG components
 const Icons = {
@@ -82,6 +83,7 @@ export default function AdminDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Check auth on mount and autofill credentials
   useEffect(() => {
@@ -762,11 +764,7 @@ export default function AdminDashboard() {
                       <p className="text-sm text-foreground-muted">24+ hours passed without deposit payment</p>
                     </div>
                     <button
-                      onClick={() => {
-                        if (confirm('Cancel this expired booking? This action cannot be undone.')) {
-                          updateBooking(selectedBooking.id, { status: 'cancelled' });
-                        }
-                      }}
+                      onClick={() => setShowCancelConfirm(true)}
                       disabled={updatingId === selectedBooking.id}
                       className="px-4 py-2 bg-red-500 text-white rounded-lg font-medium text-sm hover:bg-red-600 transition-colors"
                     >
@@ -779,6 +777,21 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      <Confirm
+        isOpen={showCancelConfirm}
+        title="Cancel Booking"
+        message="Cancel this expired booking? This action cannot be undone."
+        confirmText="Cancel Booking"
+        cancelText="Keep"
+        loading={!!updatingId}
+        onConfirm={() => {
+          if (!selectedBooking) return;
+          updateBooking(selectedBooking.id, { status: 'cancelled' });
+          setShowCancelConfirm(false);
+        }}
+        onCancel={() => setShowCancelConfirm(false)}
+      />
     </div>
   );
 }

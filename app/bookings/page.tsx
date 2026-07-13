@@ -26,7 +26,7 @@ import {
   IndianRupee,
   Copy,
 } from 'lucide-react';
-import { Button, Card, Badge, toast } from '@/components/ui';
+import { Button, Card, Badge, toast, Confirm } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
 
 const tabs = ['all', 'pending', 'upcoming', 'completed', 'cancelled'];
@@ -143,6 +143,7 @@ export default function MyBookingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null);
 
   const fetchData = async (showRefreshing = false) => {
     if (!user?.id) return; // Don't fetch if no user
@@ -237,22 +238,21 @@ export default function MyBookingsPage() {
     }
   };
 
-  const handleDeleteBooking = async (bookingId: string) => {
-    if (!confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
-      return;
-    }
-    
-    setDeletingId(bookingId);
+  const handleDeleteBooking = async () => {
+    if (!deleteBookingId) return;
+
+    setDeletingId(deleteBookingId);
     try {
-      const response = await fetch(`/api/bookings/${bookingId}`, {
+      const response = await fetch(`/api/bookings/${deleteBookingId}`, {
         method: 'DELETE',
       });
       
       const result = await response.json();
       
       if (result.success) {
-        setBookings(bookings.filter(b => (b.id || b._id) !== bookingId));
-        console.log('✅ Booking deleted successfully');
+        setBookings(bookings.filter(b => (b.id || b._id) !== deleteBookingId));
+        setDeleteBookingId(null);
+        toast.success('Booking deleted successfully');
       } else {
         console.error('❌ Failed to delete booking:', result.error);
         toast.error('Failed to delete booking: ' + result.error);
@@ -767,11 +767,11 @@ export default function MyBookingsPage() {
                             variant="ghost"
                             size="sm"
                             className="text-error hover:bg-error/10"
-                            onClick={() => handleDeleteBooking(booking._id)}
-                            disabled={deletingId === booking._id}
-                            leftIcon={deletingId === booking._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            onClick={() => setDeleteBookingId(booking.id || booking._id)}
+                            disabled={deletingId === (booking.id || booking._id)}
+                            leftIcon={deletingId === (booking.id || booking._id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                           >
-                            {deletingId === booking._id ? 'Deleting...' : 'Delete'}
+                            {deletingId === (booking.id || booking._id) ? 'Deleting...' : 'Delete'}
                           </Button>
                           <Link href={`/venues/${booking.venueId}`}>
                             <Button
@@ -792,6 +792,17 @@ export default function MyBookingsPage() {
           </div>
         )}
       </div>
+
+      <Confirm
+        isOpen={!!deleteBookingId}
+        title="Delete Booking"
+        message="Are you sure you want to delete this booking? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        loading={!!deletingId}
+        onConfirm={handleDeleteBooking}
+        onCancel={() => setDeleteBookingId(null)}
+      />
     </div>
   );
 }

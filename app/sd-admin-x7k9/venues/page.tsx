@@ -6,7 +6,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import AdminHeader from '@/components/layout/AdminHeader';
 import VenueEditModal from '@/components/admin/VenueEditModal';
 import { Check, Eye, Pencil, X } from 'lucide-react';
-import { toast } from '@/components/ui';
+import { toast, Confirm } from '@/components/ui';
 
 // Icons as simple SVG components
 const Icons = {
@@ -88,6 +88,7 @@ export default function AdminVenueRequestsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [approveConfirmId, setApproveConfirmId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
@@ -175,8 +176,6 @@ export default function AdminVenueRequestsPage() {
   }, [filter, isAuthenticated]);
 
   const handleApprove = async (id: string) => {
-    if (!confirm('Approve this venue and make it live?')) return;
-    
     setProcessingId(id);
     try {
       const res = await fetch(`/api/sd-admin/venue-requests/${id}`, {
@@ -188,6 +187,7 @@ export default function AdminVenueRequestsPage() {
       if (data.success) {
         toast.success('Venue approved and published!');
         setSelectedRequest(null);
+        setApproveConfirmId(null);
         fetchRequests();
       } else {
         toast.error('Error: ' + data.error);
@@ -506,7 +506,7 @@ export default function AdminVenueRequestsPage() {
                               Edit
                             </button>
                             <button
-                              onClick={() => handleApprove(request.id)}
+                              onClick={() => setApproveConfirmId(request.id)}
                               disabled={processingId === request.id}
                               className="px-4 py-[6px] cursor-pointer text-[12px] bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover text-sm disabled:opacity-50 w-fit flex items-center justify-center gap-2"
                             >
@@ -687,7 +687,7 @@ export default function AdminVenueRequestsPage() {
                     Edit Details
                   </button>
                   <button
-                    onClick={() => handleApprove(selectedRequest.id)}
+                    onClick={() => setApproveConfirmId(selectedRequest.id)}
                     disabled={processingId === selectedRequest.id}
                     className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
                   >
@@ -754,6 +754,19 @@ export default function AdminVenueRequestsPage() {
           </div>
         </div>
       )}
+
+      <Confirm
+        isOpen={!!approveConfirmId}
+        title="Approve Venue"
+        message="Approve this venue and make it live?"
+        confirmText="Approve"
+        cancelText="Cancel"
+        loading={!!processingId}
+        onConfirm={() => {
+          if (approveConfirmId) handleApprove(approveConfirmId);
+        }}
+        onCancel={() => setApproveConfirmId(null)}
+      />
     </div>
   );
 }

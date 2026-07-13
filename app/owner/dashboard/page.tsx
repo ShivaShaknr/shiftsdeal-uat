@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import QRCode from 'react-qr-code';
-import { Button, Card, Badge, Modal, toast } from '@/components/ui';
+import { Button, Card, Badge, Modal, toast, Confirm } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
 
 const tabs = [
@@ -59,6 +59,7 @@ export default function OwnerDashboardPage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLink, setShareLink] = useState('');
@@ -353,24 +354,23 @@ export default function OwnerDashboardPage() {
     }
   };
 
-  const handleDeleteBooking = async (bookingId: string) => {
-    if (!confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
-      return;
-    }
-    
-    setDeletingId(bookingId);
+  const handleDeleteBooking = async () => {
+    if (!deleteBookingId) return;
+
+    setDeletingId(deleteBookingId);
     try {
-      const response = await fetch(`/api/bookings/${bookingId}`, {
+      const response = await fetch(`/api/bookings/${deleteBookingId}`, {
         method: 'DELETE',
       });
       
       const result = await response.json();
       
       if (result.success) {
-        setBookings(bookings.filter(b => b.id !== bookingId));
+        setBookings(bookings.filter(b => b.id !== deleteBookingId));
         setShowBookingModal(false);
         setSelectedBooking(null);
-        console.log('✅ Booking deleted successfully');
+        setDeleteBookingId(null);
+        toast.success('Booking deleted successfully');
       } else {
         console.error('❌ Failed to delete booking:', result.error);
         toast.error('Failed to delete booking: ' + result.error);
@@ -775,7 +775,7 @@ export default function OwnerDashboardPage() {
                               <Button variant="outline" size="sm" className="text-error hover:bg-error/10" onClick={() => handleRejectBooking(booking.id)} disabled={actionLoading}>
                                 <X className="w-4 h-4" />
                               </Button>
-                              <Button variant="outline" size="sm" className="text-error hover:bg-error/10" onClick={() => handleDeleteBooking(booking.id)} disabled={deletingId === booking.id}>
+                              <Button variant="outline" size="sm" className="text-error hover:bg-error/10" onClick={() => setDeleteBookingId(booking.id)} disabled={deletingId === booking.id}>
                                 {deletingId === booking.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                               </Button>
                               <Button size="sm" onClick={() => handleApproveBooking(booking.id)} disabled={actionLoading}>
@@ -856,7 +856,7 @@ export default function OwnerDashboardPage() {
                                       variant="ghost" 
                                       size="sm" 
                                       className="text-error hover:bg-error/10"
-                                      onClick={() => handleDeleteBooking(booking.id)} 
+                                      onClick={() => setDeleteBookingId(booking.id)} 
                                       disabled={deletingId === booking.id}
                                     >
                                       {deletingId === booking.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -1148,7 +1148,7 @@ export default function OwnerDashboardPage() {
             <Button
               variant="outline"
               className="w-full border-error/40 text-error hover:bg-error/10"
-              onClick={() => handleDeleteBooking(selectedBooking.id)}
+              onClick={() => setDeleteBookingId(selectedBooking.id)}
               disabled={deletingId === selectedBooking.id}
             >
               {deletingId === selectedBooking.id ? (
@@ -1476,6 +1476,17 @@ export default function OwnerDashboardPage() {
           </div>
         </div>
       </Modal>
+
+      <Confirm
+        isOpen={!!deleteBookingId}
+        title="Delete Booking"
+        message="Are you sure you want to delete this booking? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        loading={!!deletingId}
+        onConfirm={handleDeleteBooking}
+        onCancel={() => setDeleteBookingId(null)}
+      />
     </div>
   );
 }
