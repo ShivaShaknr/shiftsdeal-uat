@@ -6,7 +6,8 @@ import { CheckCircle, Calendar, MapPin, Download, Home, ArrowRight, Hash } from 
 import { Button, Card, toast } from '@/components/ui';
 import Confetti from 'react-confetti';
 import { useEffect, useState } from 'react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatRupeeNumber } from '@/lib/utils';
+import { bookingContractPdf } from '@/lib/communication/contractTemplates/bookingContractPdf';
 
 interface ReceiptData {
   bookingId: string;
@@ -21,6 +22,7 @@ interface ReceiptData {
   contactName: string;
   contactEmail: string;
   contactPhone: string;
+  signature?: string;
   pricing: {
     basePrice: number;
     platformFee: number;
@@ -31,7 +33,70 @@ interface ReceiptData {
     balanceAmount: number;
     commissionLabel?: string;
   };
+  contract?: {
+    title: string;
+    generatedAt: string;
+    sections: { heading: string; content: string }[];
+  };
   createdAt: string;
+}
+
+const rs = (amount: number) => `Rs. ${formatRupeeNumber(amount)}`;
+
+function buildContractFromReceipt(data: ReceiptData) {
+  const pricing = data.pricing;
+  const commissionLabel =
+    pricing.commissionLabel ||
+    (pricing.basePrice > 0
+      ? `${((pricing.platformFee / pricing.basePrice) * 100).toFixed(0)}%`
+      : '10%');
+
+  return {
+    title: 'Venue Booking Agreement',
+    generatedAt: data.createdAt || new Date().toISOString(),
+    sections: [
+      {
+        heading: '1. Parties to the Agreement',
+        content: `This Venue Booking Agreement ("Agreement") is entered into on ${new Date(data.createdAt || Date.now()).toLocaleDateString()} between:\n\nVenue Owner: ${data.venueName}\nAddress: ${data.venueAddress}\n\nand\n\nRenter: ${data.organizationName}\nContact Person: ${data.contactName}\nEmail: ${data.contactEmail}\nPhone: ${data.contactPhone}`,
+      },
+      {
+        heading: '2. Event Details',
+        content: `Event Name: ${data.eventName}\nEvent Type: ${data.eventType}\nDate: ${data.date}\nTime: ${data.time}\nExpected Attendees: ${data.attendees}`,
+      },
+      {
+        heading: '3. Venue Description',
+        content: `The venue "${data.venueName}" located at ${data.venueAddress} is hereby booked for the above-mentioned event.`,
+      },
+      {
+        heading: '4. Payment Terms',
+        content: `Venue Charges: ${rs(pricing.basePrice)}\nPlatform Fee (${commissionLabel}): ${rs(pricing.platformFee)}\nSubtotal: ${rs(pricing.subtotal)}\nGST (18%): ${rs(pricing.gst)}\n\nTotal Amount: ${rs(pricing.totalAmount)}\nDeposit (30%): ${rs(pricing.depositAmount)}\nBalance Amount: ${rs(pricing.balanceAmount)}\n\nThe deposit amount must be paid within 24 hours of signing this agreement to confirm the booking. The balance amount is due 7 days before the event date.`,
+      },
+      {
+        heading: '5. Cancellation Policy',
+        content: `- Cancellation 30+ days before event: Full refund minus 10% processing fee\n- Cancellation 15-29 days before event: 50% refund\n- Cancellation less than 15 days before event: No refund\n- No-show: No refund`,
+      },
+      {
+        heading: '6. Renter Responsibilities',
+        content: `The Renter agrees to:\n- Use the venue only for the stated purpose\n- Comply with all venue rules and regulations\n- Maintain proper conduct and ensure guests do the same\n- Be responsible for any damage to the venue or equipment\n- Vacate the premises by the agreed time\n- Not sublet or transfer this booking to any third party`,
+      },
+      {
+        heading: '7. Venue Owner Responsibilities',
+        content: `The Venue Owner agrees to:\n- Provide a clean and functional venue\n- Ensure all amenities listed are available\n- Provide access to the venue at the agreed time\n- Maintain safety standards and emergency protocols`,
+      },
+      {
+        heading: '8. Liability and Insurance',
+        content: `The Renter shall be liable for any damage caused to the venue during the booking period. The Venue Owner is not liable for any injury, loss, or damage to persons or property during the event. The Renter is advised to obtain appropriate event insurance.`,
+      },
+      {
+        heading: '9. Governing Law',
+        content: `This Agreement shall be governed by and construed in accordance with the laws of India.`,
+      },
+      {
+        heading: '10. Tax Information',
+        content: `This booking is subject to Goods and Services Tax (GST) at 18% as per Indian tax regulations. The GST amount of ${rs(pricing.gst)} is included in the total amount. GSTIN will be provided on the invoice.`,
+      },
+    ],
+  };
 }
 
 export default function BookingSuccessPage() {
@@ -68,95 +133,33 @@ export default function BookingSuccessPage() {
 
   const downloadReceipt = () => {
     if (!receiptData) {
-      toast.error('Receipt data not available. Please check your bookings page.');
+      toast.error('Booking data not available. Please create a new booking.');
       return;
     }
 
-    const { pricing } = receiptData;
-    
-    const commissionLabel =
-      pricing.commissionLabel ||
-      (pricing.basePrice > 0
-        ? `${((pricing.platformFee / pricing.basePrice) * 100).toFixed(2)}%`
-        : `${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE || 0.1) * 100).toFixed(2)}%`);
+    const contract =
+      receiptData.contract?.sections?.length
+        ? receiptData.contract
+        : buildContractFromReceipt(receiptData);
 
-    // Generate receipt content
-    const receiptContent = `
-================================================================================
-                              SHIFTSDEAL PRO
-                         BOOKING CONFIRMATION RECEIPT
-================================================================================
+    const blob = bookingContractPdf({
+      title: contract.title || 'Venue Booking Agreement',
+      generatedAt: contract.generatedAt || receiptData.createdAt,
+      sections: contract.sections,
+      signature: receiptData.signature || receiptData.contactName,
+      organizationName: receiptData.organizationName,
+      venueName: receiptData.venueName,
+    });
 
-Booking Reference: ${receiptData.bookingId}
-Date Generated: ${new Date(receiptData.createdAt).toLocaleString()}
-
---------------------------------------------------------------------------------
-                              VENUE DETAILS
---------------------------------------------------------------------------------
-Venue Name: ${receiptData.venueName}
-Address: ${receiptData.venueAddress}
-
---------------------------------------------------------------------------------
-                              EVENT DETAILS
---------------------------------------------------------------------------------
-Event Name: ${receiptData.eventName}
-Event Type: ${receiptData.eventType}
-Date: ${receiptData.date}
-Time: ${receiptData.time}
-Expected Attendees: ${receiptData.attendees}
-
---------------------------------------------------------------------------------
-                           ORGANIZATION DETAILS
---------------------------------------------------------------------------------
-Organization: ${receiptData.organizationName}
-Contact Person: ${receiptData.contactName}
-Email: ${receiptData.contactEmail}
-Phone: ${receiptData.contactPhone}
-
---------------------------------------------------------------------------------
-                              PAYMENT BREAKDOWN
---------------------------------------------------------------------------------
-Venue Charges                               ${formatCurrency(pricing.basePrice).padStart(15)}
-Platform Fee (${commissionLabel}):                           ${formatCurrency(pricing.platformFee).padStart(15)}
-                                            ---------------
-Subtotal                                    ${formatCurrency(pricing.subtotal).padStart(15)}
-GST (18%)                                   ${formatCurrency(pricing.gst).padStart(15)}
-                                            ---------------
-TOTAL AMOUNT                                ${formatCurrency(pricing.totalAmount).padStart(15)}
-
-Deposit Due (30%)                           ${formatCurrency(pricing.depositAmount).padStart(15)}
-Balance (Due before event)                  ${formatCurrency(pricing.balanceAmount).padStart(15)}
-
---------------------------------------------------------------------------------
-                              PAYMENT TERMS
---------------------------------------------------------------------------------
-1. Deposit must be paid within 24 hours of booking confirmation.
-2. Balance amount is due 7 days before the event date.
-3. All prices are inclusive of 18% GST.
-
---------------------------------------------------------------------------------
-                           CANCELLATION POLICY
---------------------------------------------------------------------------------
-• 30+ days before event: Full refund minus 10% processing fee
-• 15-29 days before event: 50% refund
-• Less than 15 days: No refund
-
-================================================================================
-                Thank you for choosing ShiftsDeal Pro!
-                   For support: support@shiftsdeal.com
-================================================================================
-`;
-
-    // Create and download the file
-    const blob = new Blob([receiptContent], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ShiftsDeal-Receipt-${receiptData.bookingId}.txt`;
+    a.download = `Venue-Booking-Contract-${(receiptData.organizationName || 'booking').replace(/\s+/g, '-')}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
+    toast.success('Contract downloaded');
   };
 
   return (
@@ -285,7 +288,7 @@ Balance (Due before event)                  ${formatCurrency(pricing.balanceAmou
               onClick={downloadReceipt}
               disabled={!receiptData}
             >
-              {receiptData ? 'Download Receipt' : 'Receipt Unavailable'}
+              {receiptData ? 'Download Contract' : 'Contract Unavailable'}
             </Button>
             <Link href="/" className="flex-1">
               <Button className="w-full" rightIcon={<ArrowRight className="w-4 h-4" />}>

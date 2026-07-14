@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, Input, Badge, toast } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
+import { bookingContractPdf } from '@/lib/communication/contractTemplates/bookingContractPdf';
 
 type BookingStep = 'details' | 'contract' | 'confirm';
 
@@ -188,22 +189,20 @@ export default function BookingPage() {
 
   const downloadContractPDF = () => {
     if (!contract) return;
-    
-    // Create text content for the contract
-    let textContent = `${contract.title}\n\n`;
-    textContent += `Generated on: ${new Date(contract.generatedAt).toLocaleDateString()}\n\n`;
-    contract.sections.forEach((section: any) => {
-      textContent += `${section.heading}\n${section.content}\n\n`;
+
+    const blob = bookingContractPdf({
+      title: contract.title || 'Venue Booking Agreement',
+      generatedAt: contract.generatedAt || new Date().toISOString(),
+      sections: contract.sections || [],
+      signature: formData.signature,
+      organizationName: formData.organizationName,
+      venueName: venue?.name,
     });
-    textContent += `\n\nSigned by: ${formData.signature || '[Pending Signature]'}\n`;
-    textContent += `Date: ${new Date().toLocaleDateString()}\n`;
-    
-    // Create blob and download
-    const blob = new Blob([textContent], { type: 'text/plain' });
+
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Venue-Booking-Contract-${formData.organizationName.replace(/\s+/g, '-')}.txt`;
+    a.download = `Venue-Booking-Contract-${(formData.organizationName || 'booking').replace(/\s+/g, '-')}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -472,6 +471,7 @@ export default function BookingPage() {
           contactName: formData.contactName,
           contactEmail: formData.contactEmail,
           contactPhone: formData.contactPhone,
+          signature: formData.signature,
           pricing: {
             basePrice: contract.basePrice,
             platformFee: contract.platformFee,
@@ -481,6 +481,11 @@ export default function BookingPage() {
             depositAmount: contract.depositAmount,
             balanceAmount: contract.balanceAmount,
             commissionLabel: contract.commissionLabel,
+          },
+          contract: {
+            title: contract.title || 'Venue Booking Agreement',
+            generatedAt: contract.generatedAt || new Date().toISOString(),
+            sections: contract.sections || [],
           },
           createdAt: new Date().toISOString(),
         };

@@ -29,12 +29,42 @@ export type PaymentInvoiceData = {
 
 function getLogoBase64() {
   const logoPath = path.join(process.cwd(), "public", "logo-dark.png");
-
   if (fs.existsSync(logoPath)) {
     return fs.readFileSync(logoPath).toString("base64");
   }
-
   return null;
+}
+
+function getFontBase64(fileName: string) {
+  const fontPath = path.join(process.cwd(), "public", "fonts", fileName);
+  if (fs.existsSync(fontPath)) {
+    return fs.readFileSync(fontPath).toString("base64");
+  }
+  return null;
+}
+
+function registerCalibriFonts(doc: jsPDF) {
+  const normal = getFontBase64("Calibri.ttf");
+  const bold = getFontBase64("Calibri-Bold.ttf");
+  const italic = getFontBase64("Calibri-Italic.ttf");
+
+  if (!normal) return false;
+
+  doc.addFileToVFS("Calibri.ttf", normal);
+  doc.addFont("Calibri.ttf", "Calibri", "normal");
+
+  if (bold) {
+    doc.addFileToVFS("Calibri-Bold.ttf", bold);
+    doc.addFont("Calibri-Bold.ttf", "Calibri", "bold");
+  }
+
+  if (italic) {
+    doc.addFileToVFS("Calibri-Italic.ttf", italic);
+    doc.addFont("Calibri-Italic.ttf", "Calibri", "italic");
+  }
+
+  doc.setFont("Calibri", "normal");
+  return true;
 }
 
 function safeText(value?: string | number | null) {
@@ -45,19 +75,22 @@ function safeText(value?: string | number | null) {
 
 export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
   const doc = new jsPDF("p", "mm", "a4");
+  const hasCalibri = registerCalibriFonts(doc);
+  const fontFamily = hasCalibri ? "Calibri" : "helvetica";
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-
-  const margin = 14;
-  const contentX = 18;
+  const margin = 16;
+  const contentX = 20;
   const contentW = pageWidth - contentX * 2;
 
   const black = "#111827";
   const muted = "#6b7280";
-  const lightBorder = "#d1d5db";
-  const lightBg = "#f9fafb";
+  const border = "#e5e7eb";
+  const softBg = "#f8fafc";
+  const headerBg = "#111827";
   const success = "#166534";
+  const successBg = "#ecfdf5";
 
   const basePrice = Number(data.basePrice || 0);
   const platformFee = Number(data.platformFee || 0);
@@ -86,7 +119,7 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     : "-";
 
   const setFont = (style: "normal" | "bold" | "italic" = "normal") => {
-    doc.setFont("helvetica", style);
+    doc.setFont(fontFamily, style);
   };
 
   const rupee = (amount: number) => `Rs. ${formatRupeeNumber(amount)}`;
@@ -112,98 +145,91 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     });
   };
 
-  const line = (x1: number, y1: number, x2: number, y2: number) => {
-    doc.setDrawColor(lightBorder);
-    doc.setLineWidth(0.2);
+  const wrapText = (
+    value: string,
+    maxWidth: number,
+    size = 9,
+    style: "normal" | "bold" | "italic" = "normal",
+    lineHeight = 4
+  ) => {
+    setFont(style);
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(value, maxWidth) as string[];
+    return {
+      lines,
+      height: Math.max(lineHeight, lines.length * lineHeight),
+    };
+  };
+
+  const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
+    doc.setDrawColor(border);
+    doc.setLineWidth(0.25);
     doc.line(x1, y1, x2, y2);
   };
 
-  const rect = (
+  const drawRect = (
     x: number,
     y: number,
     w: number,
     h: number,
     fill?: string,
-    stroke = lightBorder
+    stroke = border
   ) => {
+    doc.setDrawColor(stroke);
+    doc.setLineWidth(0.25);
     if (fill) {
       doc.setFillColor(fill);
-      doc.setDrawColor(stroke);
       doc.rect(x, y, w, h, "FD");
     } else {
-      doc.setDrawColor(stroke);
       doc.rect(x, y, w, h);
     }
   };
 
-  // Page border
-  doc.setDrawColor("#e5e7eb");
-  doc.setLineWidth(0.3);
+  // Outer frame
+  doc.setDrawColor("#d1d5db");
+  doc.setLineWidth(0.4);
   doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
 
   // Header
   const logo = getLogoBase64();
-
   if (logo) {
-    doc.addImage(`data:image/png;base64,${logo}`, "PNG", contentX, 20, 38, 14);
+    doc.addImage(`data:image/png;base64,${logo}`, "PNG", contentX, 22, 36, 13);
   } else {
-    text("SHIFTSDEAL", contentX, 29, {
-      size: 18,
-      style: "bold",
-      color: black,
-    });
+    text("SHIFTSDEAL", contentX, 30, { size: 16, style: "bold" });
   }
 
-  text("TAX INVOICE", pageWidth - contentX, 25, {
-    size: 22,
+  text("TAX INVOICE", pageWidth - contentX, 26, {
+    size: 18,
     style: "bold",
     align: "right",
-    color: black,
   });
-
   text("Original for Recipient", pageWidth - contentX, 33, {
-    size: 9,
+    size: 8,
     align: "right",
     color: muted,
   });
 
-  line(contentX, 42, pageWidth - contentX, 42);
+  drawLine(contentX, 42, pageWidth - contentX, 42);
 
-  // Company / invoice metadata
-  text("ShiftsDeal", contentX, 52, {
-    size: 12,
-    style: "bold",
-  });
-
+  text("ShiftsDeal", contentX, 52, { size: 11, style: "bold" });
   text("Online Venue Booking Platform", contentX, 58, {
-    size: 9,
+    size: 8.5,
     color: muted,
   });
+  text("support@shiftsdeal.com", contentX, 64, { size: 8.5, color: muted });
 
-  text("Support: support@shiftsdeal.com", contentX, 64, {
-    size: 9,
-    color: muted,
-  });
+  const metaLabelX = pageWidth - contentX - 62;
+  const metaValueX = pageWidth - contentX;
 
-  const metaX = pageWidth - contentX - 70;
+  text("Invoice No", metaLabelX, 52, { size: 8.5, color: muted });
+  text(invoiceNo, metaValueX, 52, { size: 8.5, style: "bold", align: "right" });
 
-  text("Invoice No", metaX, 52, { size: 9, color: muted });
-  text(invoiceNo, pageWidth - contentX, 52, {
-    size: 9,
-    style: "bold",
-    align: "right",
-  });
+  text("Invoice Date", metaLabelX, 59, { size: 8.5, color: muted });
+  text(invoiceDate, metaValueX, 59, { size: 8.5, style: "bold", align: "right" });
 
-  text("Invoice Date", metaX, 59, { size: 9, color: muted });
-  text(invoiceDate, pageWidth - contentX, 59, {
-    size: 9,
-    style: "bold",
-    align: "right",
-  });
-
-  text("Payment Status", metaX, 66, { size: 9, color: muted });
-  text("Paid", pageWidth - contentX, 66, {
-    size: 9,
+  text("Payment Status", metaLabelX, 66, { size: 8.5, color: muted });
+  text("Paid", metaValueX, 66, {
+    size: 8.5,
     style: "bold",
     align: "right",
     color: success,
@@ -214,80 +240,113 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     return `${data.startTime} - ${data.endTime}`;
   };
 
-  // Bill to / Booking details boxes
-  const boxY = 78;
-  const boxW = (contentW - 8) / 2;
-  const boxH = 50;
+  // Info boxes — narrower Billed To, wider Booking Details
+  const boxY = 74;
+  const gap = 6;
+  const leftBoxW = contentW * 0.32;
+  const rightBoxW = contentW - leftBoxW - gap;
+  const leftPad = 5;
+  const labelColW = 26;
+  const leftValueW = leftBoxW - leftPad * 2;
+  const rightValueW = rightBoxW - leftPad * 2 - labelColW;
+  const lineH = 4;
 
-  rect(contentX, boxY, boxW, boxH);
-  rect(contentX + boxW + 8, boxY, boxW, boxH);
+  const leftItems = [
+    {
+      ...wrapText(safeText(data.contactName), leftValueW, 10, "bold", 4.2),
+      size: 10,
+      style: "bold" as const,
+      color: black,
+    },
+    {
+      ...wrapText(safeText(data.contactEmail), leftValueW, 8.5, "normal", 3.8),
+      size: 8.5,
+      style: "normal" as const,
+      color: muted,
+    },
+    {
+      ...wrapText(safeText(data.contactPhone), leftValueW, 8.5, "normal", 3.8),
+      size: 8.5,
+      style: "normal" as const,
+      color: muted,
+    },
+  ];
 
-  rect(contentX, boxY, boxW, 9, lightBg);
-  rect(contentX + boxW + 8, boxY, boxW, 9, lightBg);
+  const rightItems = [
+    { label: "Booking ID", ...wrapText(safeText(data.bookingId), rightValueW, 8.5, "bold", 3.8) },
+    { label: "Venue", ...wrapText(safeText(data.venueName), rightValueW, 8.5, "bold", 3.8) },
+    { label: "Address", ...wrapText(safeText(data.venueAddress), rightValueW, 8.5, "bold", 3.8) },
+    { label: "Event", ...wrapText(safeText(data.eventName), rightValueW, 8.5, "bold", 3.8) },
+    {
+      label: "Date & Time",
+      ...wrapText(`${bookingDate} | ${formatTiming()}`, rightValueW, 8.5, "bold", 3.8),
+    },
+  ];
 
-  text("BILLED TO", contentX + 4, boxY + 6, {
-    size: 8,
+  let leftContentH = 10;
+  leftItems.forEach((item) => {
+    leftContentH += item.height + 2.2;
+  });
+
+  let rightContentH = 10;
+  rightItems.forEach((item) => {
+    rightContentH += Math.max(6.5, item.height) + 2.2;
+  });
+
+  const boxH = Math.max(44, leftContentH, rightContentH) + 4;
+  const rightBoxX = contentX + leftBoxW + gap;
+
+  drawRect(contentX, boxY, leftBoxW, boxH);
+  drawRect(rightBoxX, boxY, rightBoxW, boxH);
+  drawRect(contentX, boxY, leftBoxW, 8, softBg);
+  drawRect(rightBoxX, boxY, rightBoxW, 8, softBg);
+
+  text("BILLED TO", contentX + leftPad, boxY + 5.5, {
+    size: 7.5,
+    style: "bold",
+    color: muted,
+  });
+  text("BOOKING DETAILS", rightBoxX + leftPad, boxY + 5.5, {
+    size: 7.5,
     style: "bold",
     color: muted,
   });
 
-  text("BOOKING DETAILS", contentX + boxW + 12, boxY + 6, {
-    size: 8,
-    style: "bold",
-    color: muted,
+  let leftY = boxY + 14;
+  leftItems.forEach((item) => {
+    item.lines.forEach((lineItem, index) => {
+      text(lineItem, contentX + leftPad, leftY + index * (item.size === 10 ? 4.2 : 3.8), {
+        size: item.size,
+        style: item.style,
+        color: item.color,
+      });
+    });
+    leftY += item.height + 2.2;
   });
 
-  text(safeText(data.contactName), contentX + 4, boxY + 17, {
-    size: 10,
-    style: "bold",
-  });
-
-  text(safeText(data.contactEmail), contentX + 4, boxY + 24, {
-    size: 9,
-    color: muted,
-  });
-
-  text(safeText(data.contactPhone), contentX + 4, boxY + 31, {
-    size: 9,
-    color: muted,
-  });
-
-  const bx = contentX + boxW + 12;
-
-  text(`Booking ID: ${safeText(data.bookingId)}`, bx, boxY + 17, {
-    size: 9,
-    maxWidth: boxW - 10,
-  });
-
-  text(`Venue: ${safeText(data.venueName)}`, bx, boxY + 24, {
-    size: 9,
-    maxWidth: boxW - 10,
-  });
-
-  if (data.venueAddress) {
-    text(safeText(data.venueAddress), bx, boxY + 30, {
+  let rightY = boxY + 14;
+  rightItems.forEach((item) => {
+    text(`${item.label}:`, rightBoxX + leftPad, rightY, {
       size: 8,
       color: muted,
-      maxWidth: boxW - 10,
     });
-  }
 
-  text(`Event: ${safeText(data.eventName)}`, bx, boxY + 37, {
-    size: 9,
-    maxWidth: boxW - 10,
-  });
+    item.lines.forEach((lineItem, index) => {
+      text(lineItem, rightBoxX + leftPad + labelColW, rightY + index * 3.8, {
+        size: 8.5,
+        style: "bold",
+      });
+    });
 
-  text(`Date: ${bookingDate}  |  ${formatTiming()}`, bx, boxY + 44, {
-    size: 9,
-    maxWidth: boxW - 10,
+    rightY += Math.max(6.5, item.height) + 2.2;
   });
 
   // Items table
-  const tableY = 142;
-  const headerH = 10;
-  const descW = 72;
-  const timingW = 30;
-  const rateW = 34;
+  const tableY = boxY + boxH + 12;
+  const headerH = 9;
+  const descW = 78;
+  const timingW = 34;
+  const rateW = 32;
   const amountW = contentW - descW - timingW - rateW;
 
   const descX = contentX;
@@ -295,50 +354,56 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
   const rateX = timingX + timingW;
   const amountX = rateX + rateW;
 
-  rect(contentX, tableY, contentW, headerH, black, black);
+  drawRect(contentX, tableY, contentW, headerH, headerBg, headerBg);
 
-  text("DESCRIPTION", descX + 4, tableY + 6.7, {
-    size: 8,
+  text("DESCRIPTION", descX + 4, tableY + 6, {
+    size: 7.5,
     style: "bold",
     color: "#ffffff",
   });
-
-  text("TIMING", timingX + timingW / 2, tableY + 6.7, {
-    size: 8,
+  text("TIMING", timingX + timingW / 2, tableY + 6, {
+    size: 7.5,
     style: "bold",
     color: "#ffffff",
     align: "center",
   });
-
-  text("RATE", rateX + rateW - 4, tableY + 6.7, {
-    size: 8,
+  text("RATE", rateX + rateW - 4, tableY + 6, {
+    size: 7.5,
+    style: "bold",
+    color: "#ffffff",
+    align: "right",
+  });
+  text("AMOUNT", amountX + amountW - 4, tableY + 6, {
+    size: 7.5,
     style: "bold",
     color: "#ffffff",
     align: "right",
   });
 
-  text("AMOUNT", amountX + amountW - 4, tableY + 6.7, {
-    size: 8,
-    style: "bold",
-    color: "#ffffff",
-    align: "right",
-  });
+  const venueTitle = `Venue Booking - ${safeText(data.venueName)}`;
+  const venueTitleWrap = wrapText(venueTitle, descW - 8, 9, "normal", 4);
+  const venueAddressWrap = data.venueAddress
+    ? wrapText(safeText(data.venueAddress), descW - 8, 8, "normal", 3.6)
+    : { lines: [] as string[], height: 0 };
 
-  const venueRowH = data.venueAddress ? 14 : 10;
-  const feeRowH = 10;
+  const venueRowH = Math.max(
+    12,
+    6 + venueTitleWrap.height + (data.venueAddress ? venueAddressWrap.height + 1 : 0)
+  );
+  const feeRowH = 11;
 
   const rows = [
     {
-      title: `Venue Booking - ${safeText(data.venueName)}`,
-      address: data.venueAddress ? safeText(data.venueAddress) : null,
+      titleLines: venueTitleWrap.lines,
+      addressLines: venueAddressWrap.lines,
       timing: formatTiming(),
       rate: basePrice,
       amount: basePrice,
       rowH: venueRowH,
     },
     {
-      title: `Platform Fee (${commissionLabel})`,
-      address: null,
+      titleLines: [`Platform Fee (${commissionLabel})`],
+      addressLines: [] as string[],
       timing: "-",
       rate: platformFee,
       amount: platformFee,
@@ -349,56 +414,51 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
   let y = tableY + headerH;
 
   rows.forEach((item, index) => {
-    rect(contentX, y, contentW, item.rowH, index % 2 === 0 ? "#ffffff" : lightBg);
+    drawRect(contentX, y, contentW, item.rowH, index % 2 === 0 ? "#ffffff" : softBg);
 
-    line(timingX, y, timingX, y + item.rowH);
-    line(rateX, y, rateX, y + item.rowH);
-    line(amountX, y, amountX, y + item.rowH);
+    drawLine(timingX, y, timingX, y + item.rowH);
+    drawLine(rateX, y, rateX, y + item.rowH);
+    drawLine(amountX, y, amountX, y + item.rowH);
 
-    text(item.title, descX + 4, y + (item.address ? 5 : 6.7), {
-      size: 9,
-      maxWidth: descW - 8,
+    let textY = y + 5;
+    item.titleLines.forEach((lineItem) => {
+      text(lineItem, descX + 4, textY, { size: 9 });
+      textY += 4;
     });
 
-    if (item.address) {
-      text(item.address, descX + 4, y + 10.5, {
-        size: 8,
-        color: muted,
-        maxWidth: descW - 8,
-      });
-    }
+    item.addressLines.forEach((lineItem) => {
+      text(lineItem, descX + 4, textY, { size: 8, color: muted });
+      textY += 3.6;
+    });
 
-    text(item.timing, timingX + timingW / 2, y + 6.7, {
-      size: 9,
+    text(item.timing, timingX + timingW / 2, y + item.rowH / 2 + 1.2, {
+      size: 8.5,
       align: "center",
     });
-
-    text(rupee(item.rate), rateX + rateW - 4, y + 6.7, {
-      size: 9,
+    text(rupee(item.rate), rateX + rateW - 4, y + item.rowH / 2 + 1.2, {
+      size: 8.5,
       align: "right",
     });
-
-    text(rupee(item.amount), amountX + amountW - 4, y + 6.7, {
-      size: 9,
-      align: "right",
+    text(rupee(item.amount), amountX + amountW - 4, y + item.rowH / 2 + 1.2, {
+      size: 8.5,
       style: "bold",
+      align: "right",
     });
 
     y += item.rowH;
   });
 
-  // Table border
   const tableH = headerH + venueRowH + feeRowH;
-  rect(contentX, tableY, contentW, tableH);
-  line(timingX, tableY, timingX, y);
-  line(rateX, tableY, rateX, y);
-  line(amountX, tableY, amountX, y);
+  drawRect(contentX, tableY, contentW, tableH);
+  drawLine(timingX, tableY, timingX, y);
+  drawLine(rateX, tableY, rateX, y);
+  drawLine(amountX, tableY, amountX, y);
 
   // Totals
-  const totalsX = pageWidth - contentX - 78;
-  const totalsY = y + 14;
+  const totalsW = 78;
+  const totalsX = pageWidth - contentX - totalsW;
+  const totalsY = y + 10;
   const labelW = 38;
-  const valueW = 40;
   const totalRowH = 9;
 
   const totalRow = (
@@ -409,18 +469,17 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     bg?: string,
     color = black
   ) => {
-    rect(totalsX, rowY, labelW + valueW, totalRowH, bg);
-    line(totalsX + labelW, rowY, totalsX + labelW, rowY + totalRowH);
+    drawRect(totalsX, rowY, totalsW, totalRowH, bg);
+    drawLine(totalsX + labelW, rowY, totalsX + labelW, rowY + totalRowH);
 
     text(label, totalsX + labelW - 3, rowY + 6, {
-      size: 9,
+      size: 8.5,
       color,
       style: bold ? "bold" : "normal",
       align: "right",
     });
-
-    text(value, totalsX + labelW + valueW - 3, rowY + 6, {
-      size: 9,
+    text(value, totalsX + totalsW - 3, rowY + 6, {
+      size: 8.5,
       color,
       style: bold ? "bold" : "normal",
       align: "right",
@@ -434,44 +493,48 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     rupee(totalAmount),
     totalsY + totalRowH * 2,
     true,
-    "#ecfdf5",
+    successBg,
     success
   );
 
-  // Payment details
-  const payY = totalsY + 42;
+  // Payment info
+  const payY = totalsY + 40;
+  const payH = 34;
 
-  rect(contentX, payY, contentW, 36);
-  rect(contentX, payY, contentW, 9, lightBg);
+  drawRect(contentX, payY, contentW, payH);
+  drawRect(contentX, payY, contentW, 8, softBg);
 
-  text("PAYMENT INFORMATION", contentX + 4, payY + 6, {
-    size: 8,
+  text("PAYMENT INFORMATION", contentX + 5, payY + 5.5, {
+    size: 7.5,
     style: "bold",
     color: muted,
   });
 
-  text(`Payment ID: ${safeText(data.razorpayPaymentId)}`, contentX + 4, payY + 18, {
-    size: 9,
+  text("Payment ID", contentX + 5, payY + 15, { size: 8, color: muted });
+  text(safeText(data.razorpayPaymentId), contentX + 32, payY + 15, {
+    size: 8.5,
+    style: "bold",
+    maxWidth: contentW - 40,
   });
 
-  text("Payment Method: Razorpay", contentX + 4, payY + 25, {
-    size: 9,
-  });
+  text("Payment Method", contentX + 5, payY + 22, { size: 8, color: muted });
+  text("Razorpay", contentX + 38, payY + 22, { size: 8.5, style: "bold" });
 
-  text(`Amount Paid: ${rupee(totalAmount)}`, contentX + 4, payY + 32, {
+  text("Amount Paid", contentX + 5, payY + 29, { size: 8, color: muted });
+  text(rupee(totalAmount), contentX + 32, payY + 29, {
     size: 9,
     style: "bold",
     color: success,
   });
 
-  const footerY = pageHeight - 20;
+  const footerY = pageHeight - 22;
+  drawLine(contentX, footerY - 4, pageWidth - contentX, footerY - 4);
+  text(
+    "In case of any queries, contact support@shiftsdeal.com",
+    pageWidth / 2,
+    footerY,
+    { size: 8, color: muted, align: "center" }
+  );
 
-  line(contentX, footerY - 5, pageWidth - contentX, footerY - 5);
-  
-  text("In case of any queries, contact support@shiftsdeal.com", pageWidth / 2, footerY, {
-    size: 8,
-    color: muted,
-    align: "center",
-  });
   return Buffer.from(doc.output("arraybuffer"));
 }

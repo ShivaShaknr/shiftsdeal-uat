@@ -36,105 +36,6 @@ declare global {
   }
 }
 
-// Helper to download invoice - uses stored pricing from booking
-const downloadInvoice = (booking: any, venueDetails: any) => {
-  // Get pricing from stored values (already calculated at checkout)
-  const basePrice = booking.base_price || booking.basePrice || 0;
-  const platformFee = booking.platform_fee || booking.platformFee || 0;
-  const subtotal = booking.subtotal || (basePrice + platformFee);
-  const gstAmount = booking.gst_amount || booking.gstAmount || 0;
-  const totalAmount = booking.total_amount || booking.totalAmount || 0;
-  const depositAmount = booking.deposit_amount || booking.depositAmount || 0;
-  const balanceAmount = booking.balance_amount || booking.balanceAmount || 0;
-  
-  const commissionLabel =
-    basePrice > 0
-      ? `${((platformFee / basePrice) * 100).toFixed(2)}%`
-      : `${(Number(process.env.NEXT_PUBLIC_COMMISSION_PERCENTAGE || 0.1) * 100).toFixed(2)}%`;
-
-  const invoiceContent = `
-================================================================================
-                              SHIFTS DEAL PRO
-                                 INVOICE
-================================================================================
-
-Invoice Number: INV-${booking._id?.substring(0, 8).toUpperCase() || 'N/A'}
-Date Generated: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-
---------------------------------------------------------------------------------
-                              VENUE DETAILS
---------------------------------------------------------------------------------
-Venue Name:      ${venueDetails?.name || 'N/A'}
-Address:         ${venueDetails?.address?.city || ''}, ${venueDetails?.address?.state || ''}
-
---------------------------------------------------------------------------------
-                             BOOKING DETAILS
---------------------------------------------------------------------------------
-Booking ID:      ${booking._id || 'N/A'}
-Event Date:      ${new Date(booking.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-Time:            ${booking.startTime || booking.start_time} - ${booking.endTime || booking.end_time}
-Event Name:      ${booking.eventName || booking.event_name || 'N/A'}
-Event Type:      ${booking.eventType || booking.event_type || 'N/A'}
-Attendees:       ${booking.attendees || 'N/A'}
-
---------------------------------------------------------------------------------
-                             CONTACT DETAILS
---------------------------------------------------------------------------------
-Name:            ${booking.contactName || booking.contact_name || 'N/A'}
-Email:           ${booking.contactEmail || booking.contact_email || 'N/A'}
-Phone:           ${booking.contactPhone || booking.contact_phone || 'N/A'}
-
---------------------------------------------------------------------------------
-                             PAYMENT SUMMARY
---------------------------------------------------------------------------------
-Venue Charges:                                           ${formatCurrency(basePrice)}
-Platform Fee (${commissionLabel}):                                       ${formatCurrency(platformFee)}
-                                                         ----------------
-Subtotal:                                                ${formatCurrency(subtotal)}
-GST (18%):                                               ${formatCurrency(gstAmount)}
-                                                         ================
-TOTAL AMOUNT:                                            ${formatCurrency(totalAmount)}
-
-Deposit (30%):                                           ${formatCurrency(depositAmount)}
-Balance Due:                                             ${formatCurrency(balanceAmount)}
-
---------------------------------------------------------------------------------
-                             PAYMENT DETAILS
---------------------------------------------------------------------------------
-UPI ID:          shiftsdeal@upi
-Account Name:    Shifts Deal Pro Pvt Ltd
-
-UPI Payment Link (copy & paste in browser or UPI app):
-upi://pay?pa=shiftsdeal@upi&pn=ShiftsDealPro&am=${depositAmount}&cu=INR&tn=Booking-${booking._id?.substring(0, 8) || 'Deposit'}
-
-Bank Transfer (Alternative):
-Bank:            HDFC Bank
-Account No:      50100XXXXXXXXX
-IFSC Code:       HDFC0001234
-Account Name:    Shifts Deal Pro Pvt Ltd
-
---------------------------------------------------------------------------------
-                                STATUS
---------------------------------------------------------------------------------
-Booking Status:  ${booking.status?.toUpperCase() || 'N/A'}
-
-================================================================================
-                    Thank you for choosing Shifts Deal Pro!
-                  For support: support@shiftsdeal.com
-================================================================================
-`.trim();
-
-  const blob = new Blob([invoiceContent], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Invoice-${booking._id?.substring(0, 8) || 'booking'}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
-
 export default function MyBookingsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
@@ -144,6 +45,7 @@ export default function MyBookingsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
 
   const fetchData = async (showRefreshing = false) => {
     if (!user?.id) return; // Don't fetch if no user
@@ -262,6 +164,35 @@ export default function MyBookingsPage() {
       toast.error('Error deleting booking');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleDownloadInvoice = async (bookingId: string) => {
+    setDownloadingInvoiceId(bookingId);
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}/invoice`);
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        toast.error(result?.error || 'Failed to download invoice');
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${bookingId.substring(0, 8).toUpperCase()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Invoice downloaded');
+    } catch (error) {
+      console.error('Invoice download error:', error);
+      toast.error('Failed to download invoice');
+    } finally {
+      setDownloadingInvoiceId(null);
     }
   };
 
@@ -581,9 +512,9 @@ export default function MyBookingsPage() {
                       )}
 
                       {booking.status === 'confirmed' && booking.payment_status === 'pending' && (
-                        <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 ">
                          <div className="flex items-start gap-3">
-                           <CheckCircle2 className="w-5 h-5 text-success mt-0.5" />
+                           <CheckCircle2 className="w-5 h-5 mt-0.5 text-blue-700" />
                            <div className="flex-1">
                              {process.env.NEXT_PUBLIC_PAYMENT_MODE === 'platform' ? (
                                /* ── PLATFORM PAYMENT MODE: QR + UPI flow ── */
@@ -658,17 +589,16 @@ export default function MyBookingsPage() {
                              ) : (
                                /* ── DIRECT MODE: ShiftsDeal contacts the user ── */
                                <>
-                                 <h4 className="font-semibold text-foreground mb-2">Your Request Has Been Approved! 🎉</h4>
-                                 <p className="text-sm text-foreground-muted mb-3">
+                                 <h4 className="font-semibold text-blue-700 mb-2">Your Request Has Been Approved! 🎉</h4>
+                                 {/* <p className="text-sm text-foreground-muted mb-3">
                                    ShiftsDeal will reach out to you in the next 24 hours from{' '}
                                    <a href="mailto:team.shiftsdeal@gmail.com" className="text-primary underline">
                                      team.shiftsdeal@gmail.com
                                    </a>{' '}
                                    with further instructions to complete your booking.
-                                 </p>
-                                 <div className="flex items-start gap-2 text-foreground-muted text-sm">
-                                   <AlertCircle className="w-4 h-4 mt-0.5 text-warning flex-shrink-0" />
-                                   <p>Please check your inbox (and spam folder) for an email from us.</p>
+                                 </p> */}
+                                 <div className="flex items-start gap-2 text-blue-700 text-sm">
+                                   <p>Please make the payment to confirm your booking.</p>
                                  </div>
                                </>
                              )}
@@ -678,16 +608,16 @@ export default function MyBookingsPage() {
                       )}
 
                       {booking.status === 'completed' && (
-                        <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
+                        <div className="bg-green-50 border border-green-700 rounded-lg p-4 mb-4">
                           <div className="flex items-start gap-3">
-                            <CheckCircle2 className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                            <CheckCircle2 className="w-5 h-5 text-green-700 mt-0.5 flex-shrink-0" />
                       
                             <div className="flex-1">
-                              <h4 className="font-semibold text-foreground mb-1">
+                              <h4 className="font-semibold text-foreground mb-1 text-green-700">
                                 Booking Completed
                               </h4>
                       
-                              <p className="text-sm text-foreground-muted">
+                              <p className="text-sm text-green-700">
                                 Your booking has been successfully completed. Thank you for choosing ShiftsDeal.
                               </p>
                             </div>
@@ -696,16 +626,16 @@ export default function MyBookingsPage() {
                       )}
 
                       {booking.status === 'cancelled' && (
-                        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
+                        <div className="bg-red-50 border border-red-700 rounded-lg p-4 mb-4">
                         <div className="flex items-start gap-3">
-                          <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+                          <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0 text-red-700" />
                     
                           <div className="flex-1">
-                            <h4 className="font-semibold text-foreground mb-1">
+                            <h4 className="font-semibold text-red-700 mb-1">
                               Booking Cancelled
                             </h4>
                     
-                            <p className="text-sm text-foreground-muted">
+                            <p className="text-sm text-red-700">
                               This booking has been cancelled. Please contact our team if you need more details.
                             </p>
                           </div>
@@ -755,14 +685,21 @@ export default function MyBookingsPage() {
                               )}
                             </div>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            leftIcon={<Download className="w-4 h-4" />}
-                            onClick={() => downloadInvoice(booking, booking.venueDetails)}
-                          >
-                            Invoice
-                          </Button>
+                          {booking.status === "completed" &&
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              leftIcon={
+                                downloadingInvoiceId === (booking.id || booking._id)
+                                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                                  : <Download className="w-4 h-4" />
+                              }
+                              disabled={downloadingInvoiceId === (booking.id || booking._id)}
+                              onClick={() => handleDownloadInvoice(booking.id || booking._id)}
+                            >
+                              {downloadingInvoiceId === (booking.id || booking._id) ? 'Downloading...' : 'Invoice'}
+                            </Button>
+                          }
                           <Button
                             variant="ghost"
                             size="sm"

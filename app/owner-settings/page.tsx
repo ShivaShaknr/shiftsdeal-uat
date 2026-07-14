@@ -49,7 +49,7 @@ const maskUpiId = (value: string) => {
 
 export default function OwnerSettingsPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, role, isLoading: authLoading } = useAuth();
 
   const [currentStep, setCurrentStep] = useState<SettingsStep>('contact');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi');
@@ -96,9 +96,16 @@ export default function OwnerSettingsPage() {
     if (authLoading) return;
 
     if (!user) {
+      router.push('/login?redirect=/owner-settings');
+      return;
+    }
+
+    if (role !== null && role !== 'owner') {
       router.push('/');
       return;
     }
+
+    if (role !== 'owner') return;
 
     const loadSettings = async () => {
       try {
@@ -134,7 +141,7 @@ export default function OwnerSettingsPage() {
     };
 
     loadSettings();
-  }, [user, authLoading, router]);
+  }, [user, role, authLoading, router]);
 
   const validateContact = () => {
     if (!paymentContactEmail.trim()) {
@@ -263,6 +270,10 @@ export default function OwnerSettingsPage() {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  if (!user || (role && role !== 'owner')) {
+    return null;
   }
 
   return (
