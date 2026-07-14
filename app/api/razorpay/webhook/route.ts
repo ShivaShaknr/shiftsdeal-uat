@@ -479,6 +479,18 @@ async function handlePaymentCaptured(event: any) {
                 { type: "text", text: String(booking.total_amount || payment.amount / 100) },
                 { type: "text", text: bookingId },
                 { type: "text", text: payment.id },
+                { type: "text", text: venueAddress || "Address not available" },
+              ],
+            },
+            {
+              type: "button",
+              sub_type: "url",
+              index: "0",
+              parameters: [
+                {
+                  type: "text",
+                  text: `maps/search/?api=1&query=${encodeURIComponent(venueAddress || "")}`,
+                },
               ],
             },
           ],
