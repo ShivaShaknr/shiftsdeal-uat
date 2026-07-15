@@ -14,16 +14,19 @@ export async function sendMail({
   to,
   subject,
   html,
+  cc,
   attachments,
 }: {
   to: string;
   subject: string;
   html: string;
+  cc?: string | string[];
   attachments?: { filename: string; content: Buffer }[];
 }) {
   await transporter.sendMail({
     from: process.env.EMAIL_FROM,
     to,
+    cc,
     subject,
     html,
     attachments,

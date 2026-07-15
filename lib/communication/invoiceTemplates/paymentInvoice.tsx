@@ -198,7 +198,7 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     text("SHIFTSDEAL", contentX, 30, { size: 16, style: "bold" });
   }
 
-  text("TAX INVOICE", pageWidth - contentX, 26, {
+  text("INVOICE", pageWidth - contentX, 26, {
     size: 18,
     style: "bold",
     align: "right",

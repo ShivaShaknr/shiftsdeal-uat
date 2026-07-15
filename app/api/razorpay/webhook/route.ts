@@ -415,6 +415,7 @@ async function handlePaymentCaptured(event: any) {
         await sendMail({
           to: booking.contact_email,
           subject: "Payment Successful - Booking Confirmed",
+          cc: "veractdata@gmail.com",
           html: paymentSuccessEmail({
             contactName: booking.contact_name,
             eventName: booking.event_name,
@@ -436,6 +437,7 @@ async function handlePaymentCaptured(event: any) {
           await sendMail({
             to: booking.contact_email,
             subject: "Payment Failed - Booking Confirmed",
+            cc: "veractdata@gmail.com",
             html: paymentFailedEmail({
               contactName: booking.contact_name,
               eventName: booking.event_name,
@@ -598,6 +600,7 @@ async function handlePayoutStatusUpdate(event: any) {
     await sendMail({
       to: booking.contact_email,
       subject: "Payment Failed - Booking Confirmed",
+      cc: "veractdata@gmail.com",
       html: paymentFailedEmail({
         contactName: booking.contact_name,
         eventName: booking.event_name,
@@ -817,6 +820,7 @@ async function handlePayoutWebhook(event: any) {
     await sendMail({
       to: ownerEmail,
       subject: `Commission ${event.event} - Shifts Deal`,
+      cc: "veractdata@gmail.com",
       html: venueCommisionSuccessEmail({
         ownerName: venueOwner.name,
         eventName: booking.event_name,
@@ -836,6 +840,7 @@ async function handlePayoutWebhook(event: any) {
     await sendMail({
       to: ownerEmail,
       subject: `Commission Reversed - Shifts Deal`,
+      cc: "veractdata@gmail.com",
       html: venueCommisionSuccessEmail({
         ownerName: venueOwner.name,
         eventName: booking.event_name,

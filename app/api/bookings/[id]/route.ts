@@ -117,6 +117,7 @@ export async function PATCH(
         await sendMail({
           to: booking.contact_email,
           subject: 'Booking Approved - Shifts Deal',
+          cc: "veractdata@gmail.com",
           html: venueApprovedEmail({
             contactName: booking.contact_name,
             eventName: booking.event_name,
@@ -154,6 +155,7 @@ export async function PATCH(
         await sendMail({
           to: booking.contact_email,
           subject: 'Booking Cancelled - Shifts Deal',
+          cc: "veractdata@gmail.com",
           html: venueRejectedEmail({
             contactName: booking.contact_name,
             eventName: booking.event_name,

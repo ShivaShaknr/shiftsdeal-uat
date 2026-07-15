@@ -56,6 +56,7 @@ export async function sendOwnerVenueAddedEmail(payload: OwnerVenueAddedEmailPayl
 
     await transporter.sendMail({
       from,
+      cc: "veractdata@gmail.com",
       to: payload.ownerEmail,
       subject: 'Your Venue Has Been Added to ShiftDeal',
       html: buildVenueAddedEmailHtml(payload),
