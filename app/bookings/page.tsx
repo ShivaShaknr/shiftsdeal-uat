@@ -326,6 +326,16 @@ export default function MyBookingsPage() {
     }
   };
 
+  const approvalMinutes = Number(
+    process.env.NEXT_PUBLIC_EXPIRE_VENUE_APPROVAL_TIMING || 1440
+  );
+
+  const paymentExpiryMinutes = Number(
+    process.env.NEXT_PUBLIC_PAYMENT_EXPIRY_TIME || 1440
+  );
+  const approvalHours = approvalMinutes / 60;
+  const paymentExpiryHours = paymentExpiryMinutes / 60;
+
 
   return (
     <div className="min-h-screen bg-background py-8">
@@ -463,7 +473,7 @@ export default function MyBookingsPage() {
                         <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-4">
                          <div className="flex items-center gap-2 text-warning">
                            <Clock className="w-4 h-4" />
-                           <p className="text-sm">Awaiting venue owner approval. You'll be notified once confirmed.</p>
+                           <p className="text-sm">Awaiting venue owner approval. You’ll be notified once it’s confirmed, usually within {approvalHours} hours.</p>
                          </div>
                         </div>
                       )}
@@ -598,7 +608,7 @@ export default function MyBookingsPage() {
                                    with further instructions to complete your booking.
                                  </p> */}
                                  <div className="flex items-start gap-2 text-blue-700 text-sm">
-                                   <p>Please make the payment to confirm your booking.</p>
+                                   <p>Please make the payment within {paymentExpiryHours} hours to confirm your booking.</p>
                                  </div>
                                </>
                              )}
@@ -619,6 +629,18 @@ export default function MyBookingsPage() {
                       
                               <p className="text-sm text-green-700">
                                 Your booking has been successfully completed. Thank you for choosing ShiftsDeal.
+                              </p>
+
+                              <h4 className="text-[14px] underline font-semibold text-foreground mt-2 mb-1 text-green-700">
+                                Venue Details
+                              </h4>
+
+                              <p className="text-sm text-green-700">
+                                {booking.venueDetails?.name},{" "}
+                                <br />
+                                {booking.venueDetails?.address?.street}{"  "}
+                                {booking.venueDetails?.address?.city}{", "}
+                                {booking.venueDetails?.address?.state}
                               </p>
                             </div>
                           </div>
@@ -643,11 +665,11 @@ export default function MyBookingsPage() {
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between pt-3 border-t border-border">
-                        <p className="text-xs text-foreground-muted">
+                      <div className="flex flex-col gap-3 pt-3 border-t border-border sm:flex-row sm:items-center sm:justify-between">
+                        <p className="min-w-0 break-all text-xs text-foreground-muted">
                           Booking ID: {booking._id}
                         </p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                           {booking.status === 'completed' && (
                             <Button
                               variant="ghost"
