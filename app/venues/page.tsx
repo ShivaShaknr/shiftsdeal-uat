@@ -498,9 +498,9 @@ function VenuesPageContent() {
                       <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
                         {venue.name}
                       </h3>
-                      <div className="flex items-center gap-1 text-sm text-foreground-muted mt-1">
+                      <div className="flex items-center gap-1 text-sm text-foreground-muted mt-1 capitalize">
                         <MapPin className="w-3 h-3" />
-                        {venue.address.city}
+                        <span className="capitalize">{venue.address.city}</span>
                         <span className="mx-1">•</span>
                         <Users className="w-3 h-3" />
                         {venue.capacity.min}-{venue.capacity.max}
@@ -575,7 +575,7 @@ function VenuesPageContent() {
                       </h3>
                       <div className="flex items-center gap-1 text-xs text-foreground-muted mt-1">
                         <MapPin className="w-3 h-3" />
-                        {venue.address.city}
+                        <span className="capitalize">{venue.address.city}</span>
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-sm font-bold text-primary">

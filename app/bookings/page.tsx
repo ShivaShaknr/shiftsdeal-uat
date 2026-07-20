@@ -263,6 +263,23 @@ export default function MyBookingsPage() {
   
         if (verifyResult.success) {
           toast.success("Payment successful");
+
+          // Show updated status immediately
+          setBookings((prev) =>
+            prev.map((b) =>
+              String(b.id || b._id) === String(bookingId)
+                ? {
+                    ...b,
+                    status: "completed",
+                    payment_status: "fully_paid",
+                    payment_inprogress: false,
+                  }
+                : b
+            )
+          );
+
+          // Sync from server after webhook has time to update status
+          setTimeout(() => fetchData(true), 1500);
         } else {
           toast.error(verifyResult.error || "Payment verification failed");
         }
@@ -320,7 +337,7 @@ export default function MyBookingsPage() {
       case "cancelled":
         return "Cancelled";
       case "expired":
-        return "Expired";
+        return "Expired - Slot Unavailable";
       default:
         return "Unknown";
     }
@@ -665,23 +682,34 @@ export default function MyBookingsPage() {
                         </div>
                       )}
 
-                      <div className="flex flex-col gap-3 pt-3 border-t border-border sm:flex-row sm:items-center sm:justify-between">
-                        <p className="min-w-0 break-all text-xs text-foreground-muted">
-                          Booking ID: {booking._id}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                          {booking.status === 'completed' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              leftIcon={<Star className="w-4 h-4" />}
-                            >
-                              Rate
-                            </Button>
+                      <div className="flex flex-col gap-3 pt-3 border-t border-border">
+                        {booking.status === "confirmed" &&
+                          booking.payment_status === "pending" &&
+                          booking.payment_inprogress && (
+                            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+                              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                              <p className="text-xs leading-relaxed text-amber-800 sm:text-sm">
+                                Another renter is paying for this slot. Please try again shortly.
+                              </p>
+                            </div>
                           )}
- 
-                          {booking.status === "confirmed" && booking.payment_status === "pending" && (
-                            <div className="flex flex-col items-start gap-1">
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="min-w-0 break-all text-xs text-foreground-muted">
+                            Booking ID: {booking._id}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                            {booking.status === 'completed' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                leftIcon={<Star className="w-4 h-4" />}
+                              >
+                                Rate
+                              </Button>
+                            )}
+
+                            {booking.status === "confirmed" && booking.payment_status === "pending" && (
                               <Button
                                 variant="primary"
                                 size="sm"
@@ -700,47 +728,42 @@ export default function MyBookingsPage() {
                               >
                                 Pay Now
                               </Button>
-                              {booking.payment_inprogress && (
-                                <p className="text-xs text-foreground-muted max-w-[220px]">
-                                  Another renter is paying for this slot. Please try again shortly.
-                                </p>
-                              )}
-                            </div>
-                          )}
-                          {booking.status === "completed" &&
+                            )}
+                            {booking.status === "completed" &&
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                leftIcon={
+                                  downloadingInvoiceId === (booking.id || booking._id)
+                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    : <Download className="w-4 h-4" />
+                                }
+                                disabled={downloadingInvoiceId === (booking.id || booking._id)}
+                                onClick={() => handleDownloadInvoice(booking.id || booking._id)}
+                              >
+                                {downloadingInvoiceId === (booking.id || booking._id) ? 'Downloading...' : 'Invoice'}
+                              </Button>
+                            }
                             <Button
                               variant="ghost"
                               size="sm"
-                              leftIcon={
-                                downloadingInvoiceId === (booking.id || booking._id)
-                                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                                  : <Download className="w-4 h-4" />
-                              }
-                              disabled={downloadingInvoiceId === (booking.id || booking._id)}
-                              onClick={() => handleDownloadInvoice(booking.id || booking._id)}
+                              className="text-error hover:bg-error/10"
+                              onClick={() => setDeleteBookingId(booking.id || booking._id)}
+                              disabled={deletingId === (booking.id || booking._id)}
+                              leftIcon={deletingId === (booking.id || booking._id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                             >
-                              {downloadingInvoiceId === (booking.id || booking._id) ? 'Downloading...' : 'Invoice'}
+                              {deletingId === (booking.id || booking._id) ? 'Deleting...' : 'Delete'}
                             </Button>
-                          }
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-error hover:bg-error/10"
-                            onClick={() => setDeleteBookingId(booking.id || booking._id)}
-                            disabled={deletingId === (booking.id || booking._id)}
-                            leftIcon={deletingId === (booking.id || booking._id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                          >
-                            {deletingId === (booking.id || booking._id) ? 'Deleting...' : 'Delete'}
-                          </Button>
-                          <Link href={`/venues/${booking.venueId}`}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              rightIcon={<ChevronRight className="w-4 h-4" />}
-                            >
-                              View Details
-                            </Button>
-                          </Link>
+                            <Link href={`/venues/${booking.venueId}`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                rightIcon={<ChevronRight className="w-4 h-4" />}
+                              >
+                                View Details
+                              </Button>
+                            </Link>
+                          </div>
                         </div>
                       </div>
                     </div>

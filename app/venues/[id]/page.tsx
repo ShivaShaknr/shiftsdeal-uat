@@ -526,7 +526,7 @@ export default function VenueDetailPage() {
                 <div className="space-y-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-foreground-muted mb-2">
-                      Event Type <span className="text-error">*</span>
+                      Event Type <span className="text-error"></span>
                     </label>
                     <select
                       value={userRequirements.eventType}
@@ -563,7 +563,7 @@ export default function VenueDetailPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-foreground-muted mb-2">
-                      Number of Attendees <span className="text-error">*</span>
+                      Number of Attendees <span className="text-error"></span>
                     </label>
                     <div className="relative">
                       <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />

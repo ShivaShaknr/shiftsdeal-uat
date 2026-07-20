@@ -538,7 +538,7 @@ export default function OwnerDashboardPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all relative',
+                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all relative cursor-pointer',
                   activeTab === tab.id
                     ? 'bg-primary text-background'
                     : 'text-foreground-muted hover:text-foreground hover:bg-background-light'
@@ -661,7 +661,7 @@ export default function OwnerDashboardPage() {
                               {request.status === 'approved' && (
                                 <p className="text-[12px] text-success flex items-center gap-1">
                                   <CheckCircle className="w-4 h-4" />
-                                  Your venue is now live and visible to guests!
+                                  Your venue is now live and make sure your bank account is added in the <strong>Account Settings</strong> to start receiving payments!
                                 </p>
                               )}
                               {request.status === 'rejected' && (
