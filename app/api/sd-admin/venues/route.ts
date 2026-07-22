@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
       console.warn('Venue ownership insert skipped:', ownershipError.message);
     }
 
-    const dashboardUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shiftsdeal.vercel.app'}/owner/dashboard`;
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shiftsdeal-uat.vercel.app'}/owner/dashboard`;
     if (ownershipMapped) {
       await sendOwnerVenueAddedEmail({
         ownerEmail: normalizedOwnerEmail,

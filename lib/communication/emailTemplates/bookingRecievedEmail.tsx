@@ -40,7 +40,7 @@ export function bookingRecievedEmail({
           A new booking request for <strong>${eventName || "-"}</strong> has been received. Please review and approve the request to proceed.
         </p>
         <a 
-            href="https://shiftsdeal.vercel.app/owner/dashboard"
+            href="https://shiftsdeal-uat.vercel.app/owner/dashboard"
             style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:5px 16px;border-radius:4px;"
           >
             Approve
