@@ -40,7 +40,7 @@ export function venueApprovedEmail({
           Thank you for booking with ShiftsDeal. Your booking request for <strong>${eventName || "-"}</strong>  has been approved by the venue owner. Please complete the payment to confirm your booking.
         </p>
         <a 
-            href="https://shiftsdeal.vercel.app/bookings"
+            href="https://shiftsdeal-uat.vercel.app/bookings"
             style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:5px 16px;border-radius:4px;"
           >
             Pay Now
