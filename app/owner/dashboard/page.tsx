@@ -341,9 +341,14 @@ export default function OwnerDashboardPage() {
       });
 
       if (response.ok) {
-        setBookings(bookings.map(b => 
-          b.id === bookingId ? { ...b, status: 'cancelled' } : b
-        ));
+        const result = await response.json();
+        if (result.success && result.data) {
+          setBookings((prev) =>
+            prev.map((b) =>
+              b.id === bookingId ? { ...b, ...result.data } : b
+            )
+          );
+        }
         setShowBookingModal(false);
         setSelectedBooking(null);
       }

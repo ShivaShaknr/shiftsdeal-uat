@@ -350,8 +350,18 @@ export default function MyBookingsPage() {
   const paymentExpiryMinutes = Number(
     process.env.NEXT_PUBLIC_PAYMENT_EXPIRY_TIME || 1440
   );
-  const approvalHours = approvalMinutes / 60;
-  const paymentExpiryHours = paymentExpiryMinutes / 60;
+  const formatExpiryDuration = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+    }
+
+    const hours = minutes / 60;
+    const displayHours = Number.isInteger(hours) ? hours : parseFloat(hours.toFixed(1));
+    return `${displayHours} hour${displayHours === 1 ? '' : 's'}`;
+  };
+
+  const approvalExpiryLabel = formatExpiryDuration(approvalMinutes);
+  const paymentExpiryLabel = formatExpiryDuration(paymentExpiryMinutes);
 
 
   return (
@@ -490,7 +500,7 @@ export default function MyBookingsPage() {
                         <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-4">
                          <div className="flex items-center gap-2 text-warning">
                            <Clock className="w-4 h-4" />
-                           <p className="text-sm">Awaiting venue owner approval. You’ll be notified once it’s confirmed, usually within {approvalHours} hours.</p>
+                           <p className="text-sm">Awaiting venue owner approval. You’ll be notified once it’s confirmed, usually within {approvalExpiryLabel}.</p>
                          </div>
                         </div>
                       )}
@@ -625,7 +635,7 @@ export default function MyBookingsPage() {
                                    with further instructions to complete your booking.
                                  </p> */}
                                  <div className="flex items-start gap-2 text-blue-700 text-sm">
-                                   <p>Please make the payment within {paymentExpiryHours} hours to confirm your booking.</p>
+                                   <p>Please make the payment within {paymentExpiryLabel} to confirm your booking.</p>
                                  </div>
                                </>
                              )}

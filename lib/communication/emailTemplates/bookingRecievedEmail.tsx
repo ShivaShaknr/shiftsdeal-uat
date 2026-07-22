@@ -1,4 +1,4 @@
-export function venueApprovedEmail({
+export function bookingRecievedEmail({
     contactName,
     eventName,
     venueName,
@@ -20,13 +20,13 @@ export function venueApprovedEmail({
           style="display:block;width:180px;height:auto;margin:0 auto 28px;"
         />
         <div style="width:72px;height:72px;line-height:72px;margin:0 auto 18px;background:#ecfdf3;border-radius:50%;color:#16803c;font-size:28px;font-weight:700;">
-          <img src="https://cdn-icons-png.flaticon.com/128/477/477571.png" alt="Check" style="width:100%;height:100%;" />
+          <img src="https://cdn-icons-png.flaticon.com/128/9776/9776979.png" alt="Check" style="width:100%;height:100%;" />
         </div>
         <h1 style="margin:0;color:#111827;font-size:18px;line-height:1.3;font-weight:700;">
-          Booking Approved
+          Booking enquiry recieved
         </h1>
         <p style="margin:10px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">
-          Your booking request has been approved by the venue owner.
+            You have received a booking request that requires your approval.
         </p>
       </div>
 
@@ -37,13 +37,13 @@ export function venueApprovedEmail({
           Hi <strong style="color:#111827;">${contactName || "Customer"}</strong>,
           <br />
           <br/>
-          Thank you for booking with ShiftsDeal. Your booking request for <strong>${eventName || "-"}</strong>  has been approved by the venue owner. Please complete the payment to confirm your booking.
+          A new booking request for <strong>${eventName || "-"}</strong> has been received. Please review and approve the request to proceed.
         </p>
         <a 
-            href="https://shiftsdeal.vercel.app/bookings"
+            href="https://shiftsdeal.vercel.app/owner/dashboard"
             style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:5px 16px;border-radius:4px;"
           >
-            Pay Now
+            Approve
           </a>
         
              <p style="margin:24px 0 0;color:#4b5563;font-size:12px;line-height:1.7;">

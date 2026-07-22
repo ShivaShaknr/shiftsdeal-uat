@@ -79,7 +79,6 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    
     // First, get the booking to retrieve KYC file paths
     const { data: existingBooking } = await supabaseAdmin
       .from('bookings')
@@ -89,6 +88,7 @@ export async function PATCH(
 
     const updateData: any = {
       status,
+      payment_status: status === 'cancelled' ? 'expired' : 'pending',
       updated_at: new Date().toISOString(),
       approved_at: approved_at ? new Date(Number(approved_at)) : null,
     };

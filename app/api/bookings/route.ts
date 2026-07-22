@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { dummyBookings } from '@/lib/data/dummy';
+import { bookingRecievedEmail } from '@/lib/communication/emailTemplates/bookingRecievedEmail';
+import { sendMail } from '@/lib/communication/sendMail';
 
 // Use service role key for server-side operations to bypass RLS
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
@@ -106,21 +108,21 @@ export async function POST(request: NextRequest) {
     const newStart = start_time.length === 5 ? `${start_time}:00` : start_time;
     const newEnd = end_time.length === 5 ? `${end_time}:00` : end_time;
 
-    // const { data: existingBookings } = await supabaseAdmin
-    //   .from('bookings')
-    //   .select('id, start_time, end_time, status')
-    //   .eq('venue_id', venue_id)
-    //   .eq('date', date)
-    //   .lt('start_time', newEnd)
-    //   .gt('end_time', newStart)
-    //   .in('status', ['pending', 'confirmed']);
+    const { data: existingBookings } = await supabaseAdmin
+      .from('bookings')
+      .select('id, start_time, end_time, status')
+      .eq('venue_id', venue_id)
+      .eq('date', date)
+      .lt('start_time', newEnd)
+      .gt('end_time', newStart)
+      .in('status', ['completed']);
 
-    // if (existingBookings && existingBookings.length > 0) {
-    //   return NextResponse.json(
-    //     { error: 'This slot is already booked for this venue.' },
-    //     { status: 409 }
-    //   );
-    // }
+    if (existingBookings && existingBookings.length > 0) {
+      return NextResponse.json(
+        { error: 'This slot is already booked for this venue.' },
+        { status: 409 }
+      );
+    }
 
     const { data, error } = await supabaseAdmin
       .from('bookings')
@@ -135,6 +137,44 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const { data: venue, error: venueError } = await supabaseAdmin
+      .from('venues')
+      .select('*')
+      .eq('id', data.venue_id)
+      .single();
+
+    let venueOwner = null;
+    if (venue?.owner_id) {
+      const { data: owner } = await supabaseAdmin
+        .from('users')
+        .select('id, name, email, role, payment_contact_email')
+        .eq('id', venue.owner_id)
+        .single();
+      venueOwner = owner;
+    }
+
+    if (venueError) {
+      console.error('Venue fetch error:', venueError);
+    }
+
+    console.log('data --------------------->', data);
+    console.log('venue owner info --------------------->', {
+      venue,
+      owner: venueOwner,
+    });
+  
+    await sendMail({
+      to: venueOwner?.email || 'Venue Owner',
+      subject: 'Booking Recieved - Shifts Deal',
+      cc: "veractdata@gmail.com",
+      html: bookingRecievedEmail({
+        contactName: venueOwner?.name || 'Venue Owner',
+        eventName: data.event_name,
+        venueName: venue?.name || 'Venue',
+      }),
+    });
+
 
     return NextResponse.json({
       success: true,

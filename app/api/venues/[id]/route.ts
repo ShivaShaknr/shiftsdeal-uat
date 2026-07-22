@@ -49,7 +49,7 @@ export async function GET(
       type: venue.type,
       images: venue.images,
       address: {
-        street: venue.address_street,
+        // street: venue.address_street,
         city: venue.address_city,
         state: venue.address_state,
         pincode: venue.address_pincode,

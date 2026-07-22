@@ -25,7 +25,7 @@ export default function Navbar() {
   const navLinks = [
     { href: '/venues', label: 'Find Venues' },
     { href: '/list-venue', label: 'List Your Venue' },
-    { href: '/how-it-works', label: 'How It Works' },
+    { href: '/how-it-works', label: 'How It Work' },
     { href: '/about', label: 'About' },
     { href: '/contact', label: 'Contact' },
   ];

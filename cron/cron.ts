@@ -11,12 +11,12 @@ const supabase = createClient(
 
 cron.schedule("* * * * *", async () => {
   try {
-    const expireVenueApprovalTiming =
-      Number(process.env.NEXT_PUBLIC_EXPIRE_VENUE_APPROVAL_TIMING) || 1;
-    const expireVenuePaymentTiming =
-      Number(process.env.NEXT_PUBLIC_EXPIRE_VENUE_PAYMENT_TIMING) || 1;
-    const expireVenueRequestTiming =
-      Number(process.env.NEXT_PUBLIC_EXPIRE_VENUE_REQUEST_TIMING) ||
+    const expireVenueApprovalTiming = 30
+      // Number(process.env.NEXT_PUBLIC_EXPIRE_VENUE_APPROVAL_TIMING) || 1;
+    const expireVenuePaymentTiming = 30
+      // Number(process.env.NEXT_PUBLIC_EXPIRE_VENUE_PAYMENT_TIMING) || 1;
+    const expireVenueRequestTiming = 
+      // Number(process.env.NEXT_PUBLIC_EXPIRE_VENUE_REQUEST_TIMING) ||
       expireVenueApprovalTiming;
 
     const approvalCutoff = new Date(
