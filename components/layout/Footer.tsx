@@ -17,7 +17,7 @@ export default function Footer() {
     ],
     company: [
       { label: 'About Us', href: '/about' },
-      { label: 'How It Works', href: '/how-it-works' },
+      { label: 'How It Work', href: '/how-it-works' },
       { label: 'Contact', href: '/contact' },
     ],
     legal: [
