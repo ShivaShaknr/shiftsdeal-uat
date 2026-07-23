@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, Badge, toast, Confirm } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
+import { supabase } from '@/lib/db/supabase';
 
 const tabs = ['all', 'pending', 'upcoming', 'completed', 'cancelled'];
 declare global {
@@ -84,7 +85,37 @@ export default function MyBookingsPage() {
   }, [user, authLoading, router]);
   
   useEffect(() => {
-    // Auto-refresh every 30 seconds to show status updates
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`bookings-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'bookings',
+          filter: `renter_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as Record<string, unknown>;
+          setBookings((prev) =>
+            prev.map((b) =>
+              String(b.id || b._id) === String(updated.id)
+                ? { ...b, ...updated }
+                : b
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!user?.id) return;
     const interval = setInterval(() => fetchData(true), 30000);
     return () => clearInterval(interval);
@@ -215,21 +246,32 @@ export default function MyBookingsPage() {
   }
   
   const handlePayNow = async (bookingId: string) => {
+    // Block others immediately (other users get this via realtime listener above)
+    fetch('/api/payment-block', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId }),
+    });
+
     const scriptLoaded = await loadRazorpayScript();
-  
     if (!scriptLoaded) {
-      toast.error("Razorpay SDK failed to load");
+      toast.error('Razorpay SDK failed to load');
       return;
     }
-  
+
     const response = await fetch(`/api/bookings/${bookingId}/pay`, {
-      method: "POST",
+      method: 'POST',
     });
-  
+
     const result = await response.json();
-  
+
     if (!result.success) {
-      toast.error(result.error || "Failed to create payment order");
+      fetch('/api/payment-block', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId }),
+      });
+      toast.error(result.error || 'Failed to create payment order');
       return;
     }
   
@@ -286,7 +328,11 @@ export default function MyBookingsPage() {
       },
       modal: {
         ondismiss: async function () {
-          await fetch(`/api/bookings/${bookingId}/pay`, { method: "PATCH" });
+          await fetch('/api/payment-block', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId }),
+          });
         },
       },
   

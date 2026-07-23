@@ -65,26 +65,13 @@ export async function POST(
     const amount = bookingData?.total_amount; // ₹500 test amount
 
     const order = await razorpay.orders.create({
-      amount: amount * 100, // Razorpay needs paise
+      amount: amount * 100,
       currency: "INR",
       receipt: bookingId.replace(/-/g, "").slice(0, 40),
       notes: {
         booking_id: bookingId,
       },
     });
-    await supabase
-      .from("bookings")
-      .update({
-        payment_inprogress: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("venue_id", bookingData?.venue_id)
-      .eq("date", bookingData?.date)
-      .lt("start_time", bookingData?.end_time)
-      .gt("end_time", bookingData?.start_time)
-      .neq("id", bookingId)
-      .in("status", ["pending", "confirmed"])
-      .select("id, event_name, date, venue_id, start_time, end_time, status, payment_status, payment_inprogress");
 
     return NextResponse.json({
       success: true,
