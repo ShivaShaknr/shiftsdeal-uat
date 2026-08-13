@@ -544,11 +544,7 @@ export default function OwnerDashboardPage() {
               <button
                 key={tab.id}
                 onClick={() =>{
-                  if(tab.id === 'payment-settings') {
-                    router.push('/owner-settings');
-                  } else {
                     setActiveTab(tab.id);
-                  }
                 }}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all relative cursor-pointer',
@@ -567,6 +563,13 @@ export default function OwnerDashboardPage() {
                 
               </button>
             ))}
+            {paymentSettings?.payment_method === null && (
+              <div className="flex items-center justify-between mb-4 bg-warning/10 p-4 rounded-lg">
+                <Link href="/owner-settings" className="text-primary hover:underline text-[12px]">
+                  <span className="flex items-center gap-1">Add Bank Details <ArrowRight className="w-3 h-3 text-primary" /></span>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
