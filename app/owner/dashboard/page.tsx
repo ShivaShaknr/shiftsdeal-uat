@@ -538,36 +538,37 @@ export default function OwnerDashboardPage() {
               </Button>
             </div>
           </div>
-          <div className="flex gap-1 mt-6 overflow-x-auto">
+          <div className="flex items-center gap-1 mt-6 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() =>{
-                    setActiveTab(tab.id);
+                onClick={() => {
+                  setActiveTab(tab.id);
                 }}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all relative cursor-pointer',
+                  'flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium transition-all relative cursor-pointer whitespace-nowrap',
                   activeTab === tab.id
                     ? 'bg-primary text-background'
                     : 'text-foreground-muted hover:text-foreground hover:bg-background-light'
                 )}
               >
-                <tab.icon className="w-4 h-4" />
+                <tab.icon className="w-4 h-4 shrink-0" />
                 {tab.label}
                 {tab.id === 'bookings' && pendingBookings.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-error text-white text-xs rounded-full flex items-center justify-center">
                     {pendingBookings.length}
                   </span>
                 )}
-                
               </button>
             ))}
             {paymentSettings?.payment_method === null && (
-              <div className="flex items-center justify-between mb-4 bg-warning/10 p-4 rounded-lg">
-                <Link href="/owner-settings" className="text-primary hover:underline text-[12px]">
-                  <span className="flex items-center gap-1">Add Bank Details <ArrowRight className="w-3 h-3 text-primary" /></span>
-                </Link>
-              </div>
+              <Link
+                href="/owner-settings"
+                className="ml-auto shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-warning/10 text-warning text-sm font-medium hover:bg-warning/20 transition-colors whitespace-nowrap"
+              >
+                Add Bank Details
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             )}
           </div>
         </div>
