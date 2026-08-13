@@ -45,7 +45,6 @@ const tabs = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'bookings', label: 'Booking Requests', icon: Calendar },
   { id: 'venues', label: 'My Venues', icon: Building2 },
-  { id: 'payment-settings', label: 'Add Bank Account', icon: CreditCard },
 ];
 
 export default function OwnerDashboardPage() {
