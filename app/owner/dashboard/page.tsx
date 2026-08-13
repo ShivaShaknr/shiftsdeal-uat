@@ -544,7 +544,7 @@ export default function OwnerDashboardPage() {
               <button
                 key={tab.id}
                 onClick={() =>{setActiveTab(tab.id)
-                  if(tab.id === 'payment-settings' && paymentSettings?.payment_method === null) {
+                  if(tab.id === 'payment-settings') {
                     router.push('/owner-settings');
                   }
                 }}
