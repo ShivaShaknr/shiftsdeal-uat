@@ -401,14 +401,14 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
       amount: basePrice,
       rowH: venueRowH,
     },
-    {
-      titleLines: [`Platform Fee (${commissionLabel})`],
-      addressLines: [] as string[],
-      timing: "-",
-      rate: platformFee,
-      amount: platformFee,
-      rowH: feeRowH,
-    },
+    // {
+    //   titleLines: [`Platform Fee (${commissionLabel})`],
+    //   addressLines: [] as string[],
+    //   timing: "-",
+    //   rate: platformFee,
+    //   amount: platformFee,
+    //   rowH: feeRowH,
+    // },
   ];
 
   let y = tableY + headerH;

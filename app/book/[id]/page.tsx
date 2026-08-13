@@ -238,10 +238,6 @@ export default function BookingPage() {
             content: `The venue "${venue?.name}" located at ${venue?.address.city} with a maximum capacity of ${venue?.capacity.max} persons is hereby booked for the above-mentioned event.`,
           },
           {
-            heading: '4. Payment Terms',
-            content: `Venue Charges: ${formatCurrency(pricing.basePrice)}\nPlatform Fee (${pricing.commissionLabel}): ${formatCurrency(pricing.platformFee)}\nSubtotal: ${formatCurrency(pricing.subtotal)}\nGST (18%): ${formatCurrency(pricing.gst)}\n\nTotal Amount: ${formatCurrency(pricing.totalAmount)}\nDeposit (${pricing.depositPercent}%): ${formatCurrency(pricing.depositAmount)}\nBalance Amount: ${formatCurrency(pricing.balanceAmount)}\n\nThe deposit amount must be paid within 24 hours of signing this agreement to confirm the booking. The balance amount is due 7 days before the event date.`,
-          },
-          {
             heading: '5. Cancellation Policy',
             content: `- Cancellation 30+ days before event: Full refund minus 10% processing fee\n- Cancellation 15-29 days before event: 50% refund\n- Cancellation less than 15 days before event: No refund\n- No-show: No refund`,
           },
@@ -970,10 +966,10 @@ export default function BookingPage() {
                   <span className="text-foreground-muted">Venue Charges ({calculateHours()} hrs × {formatCurrency(venue.pricing.hourly)}/hr)</span>
                   <span className="text-foreground">{formatCurrency(calculateFullPricing().basePrice)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                {/* <div className="flex justify-between text-sm">
                   <span className="text-foreground-muted">Platform Fee ({calculateFullPricing().commissionLabel})</span>
                   <span className="text-foreground">{formatCurrency(calculateFullPricing().platformFee)}</span>
-                </div>
+                </div> */}
                 <div className="flex justify-between text-sm">
                   <span className="text-foreground-muted">Subtotal</span>
                   <span className="text-foreground">{formatCurrency(calculateFullPricing().subtotal)}</span>

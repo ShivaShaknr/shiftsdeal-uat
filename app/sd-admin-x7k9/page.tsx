@@ -741,10 +741,10 @@ export default function AdminDashboard() {
                   label="Total Amount"
                   value={`₹${selectedBooking.total_amount || 0}`}
                 />
-                <InfoRow
+                {/* <InfoRow
                   label="Commission Amount"
                   value={`₹${selectedBooking.platform_fee || 0}`}
-                />
+                /> */}
                 <InfoRow
                   label="Settlement Amount"
                   value={`₹${selectedBooking.base_price || 0}`}

@@ -68,10 +68,6 @@ function buildContractFromReceipt(data: ReceiptData) {
         content: `The venue "${data.venueName}" located at ${data.venueAddress} is hereby booked for the above-mentioned event.`,
       },
       {
-        heading: '4. Payment Terms',
-        content: `Venue Charges: ${rs(pricing.basePrice)}\nPlatform Fee (${commissionLabel}): ${rs(pricing.platformFee)}\nSubtotal: ${rs(pricing.subtotal)}\nGST (18%): ${rs(pricing.gst)}\n\nTotal Amount: ${rs(pricing.totalAmount)}\nDeposit (30%): ${rs(pricing.depositAmount)}\nBalance Amount: ${rs(pricing.balanceAmount)}\n\nThe deposit amount must be paid within 24 hours of signing this agreement to confirm the booking. The balance amount is due 7 days before the event date.`,
-      },
-      {
         heading: '5. Cancellation Policy',
         content: `- Cancellation 30+ days before event: Full refund minus 10% processing fee\n- Cancellation 15-29 days before event: 50% refund\n- Cancellation less than 15 days before event: No refund\n- No-show: No refund`,
       },

@@ -34,6 +34,7 @@ import {
   Share2,
   Copy,
   MessageCircleIcon,
+  CreditCard,
 } from 'lucide-react';
 import Link from 'next/link';
 import QRCode from 'react-qr-code';
@@ -44,6 +45,7 @@ const tabs = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'bookings', label: 'Booking Requests', icon: Calendar },
   { id: 'venues', label: 'My Venues', icon: Building2 },
+  { id: 'payment-settings', label: 'Add Bank Account', icon: CreditCard },
 ];
 
 export default function OwnerDashboardPage() {
@@ -541,7 +543,11 @@ export default function OwnerDashboardPage() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() =>{setActiveTab(tab.id)
+                  if(tab.id === 'payment-settings' && paymentSettings?.payment_method === null) {
+                    router.push('/owner-settings');
+                  }
+                }}
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all relative cursor-pointer',
                   activeTab === tab.id
@@ -556,6 +562,7 @@ export default function OwnerDashboardPage() {
                     {pendingBookings.length}
                   </span>
                 )}
+                
               </button>
             ))}
           </div>
