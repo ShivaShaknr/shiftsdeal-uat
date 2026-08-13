@@ -543,9 +543,11 @@ export default function OwnerDashboardPage() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() =>{setActiveTab(tab.id)
+                onClick={() =>{
                   if(tab.id === 'payment-settings') {
                     router.push('/owner-settings');
+                  } else {
+                    setActiveTab(tab.id);
                   }
                 }}
                 className={cn(
