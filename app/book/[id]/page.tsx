@@ -167,7 +167,7 @@ export default function BookingPage() {
         ? venue.commission_percentage / 100
         : defaultRate;
     const platformFee = Math.round(basePrice * commissionRate);
-    const subtotal = basePrice + platformFee;
+    const subtotal = basePrice;
     const gst = Math.round(subtotal * 0.18);
     const totalAmount = subtotal + gst;
     const depositPercent = 30;

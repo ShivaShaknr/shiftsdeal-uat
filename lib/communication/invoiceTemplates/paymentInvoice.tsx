@@ -216,7 +216,7 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
     size: 8.5,
     color: muted,
   });
-  text("support@shiftsdeal.com", contentX, 64, { size: 8.5, color: muted });
+  text("bookings@shiftsdeal.com", contentX, 64, { size: 8.5, color: muted });
 
   const metaLabelX = pageWidth - contentX - 62;
   const metaValueX = pageWidth - contentX;
@@ -530,7 +530,7 @@ export function paymentInvoicePdf(data: PaymentInvoiceData): Buffer {
   const footerY = pageHeight - 22;
   drawLine(contentX, footerY - 4, pageWidth - contentX, footerY - 4);
   text(
-    "In case of any queries, contact support@shiftsdeal.com",
+    "In case of any queries, contact bookings@shiftsdeal.com",
     pageWidth / 2,
     footerY,
     { size: 8, color: muted, align: "center" }

@@ -294,7 +294,7 @@ async function createOwnerPayout(params: {
     paymentMethod === "bank"
       ? `${params.owner.bank_account_number} (${params.owner.bank_ifsc})`
       : params.owner.upi_id;
-
+  console.log("params.amountInPaise", params.amountInPaise);
   const payout = await createPayout({
     bookingId,
     fundAccountId: fundAccount.id,
@@ -356,7 +356,8 @@ async function handlePaymentCaptured(event: any) {
 
 
   const totalAmountInPaise = payment.amount;
-  const ownerAmountInPaise = Math.round(Number(booking.base_price) * 100);
+  const ownerAmountInPaise = Math.round(Number(booking.base_price-booking.platform_fee) * 100);
+  console.log("ownerAmountInPaise ==============", ownerAmountInPaise);
 
   /**
    * IMPORTANT:
@@ -789,7 +790,8 @@ async function handlePayoutWebhook(event: any) {
       razorpay_order_id,
       owner_commission_email_sent,
       venue_id,
-      razorpay_payout_id
+      razorpay_payout_id,
+      platform_fee
     `)
     .eq("razorpay_payout_id", payoutId)
     .single();
@@ -824,7 +826,7 @@ async function handlePayoutWebhook(event: any) {
       html: venueCommisionSuccessEmail({
         ownerName: venueOwner.name,
         eventName: booking.event_name,
-        amount: Math.round(Number(booking.base_price) * 100),
+        amount: Math.round(Number(booking.base_price-booking.platform_fee) * 100),
         razorpayPaymentId: booking.razorpay_payout_id,
         razorpayOrderId: booking.razorpay_order_id,
       }),
@@ -844,7 +846,7 @@ async function handlePayoutWebhook(event: any) {
       html: venueCommisionSuccessEmail({
         ownerName: venueOwner.name,
         eventName: booking.event_name,
-        amount: Math.round(Number(booking.base_price) * 100),
+        amount: Math.round(Number(booking.base_price-booking.platform_fee) * 100),
         razorpayPaymentId: booking.razorpay_payout_id,
         razorpayOrderId: booking.razorpay_order_id,
       }),
