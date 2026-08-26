@@ -747,7 +747,7 @@ export default function AdminDashboard() {
                 /> */}
                 <InfoRow
                   label="Settlement Amount"
-                  value={`₹${selectedBooking.base_price || 0}`}
+                  value={`₹${selectedBooking.base_price - (selectedBooking.platform_fee || 0) || 0}`}
                 />
                 <InfoRow
                   label="Settlement Status"
