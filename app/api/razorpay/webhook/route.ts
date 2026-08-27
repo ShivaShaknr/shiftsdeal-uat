@@ -145,6 +145,16 @@ function verifyWebhookSignature(rawBody: string, signature: string | null) {
 }
 
 /* ----------------------------------
+   1b. PAYOUT FEATURE FLAG
+   Set IS_PAYOUT=true in env to enable owner payouts via RazorpayX.
+   When false/unset, payment stays with the Razorpay account holder.
+---------------------------------- */
+
+function isPayoutEnabled(): boolean {
+  return String(process.env.IS_PAYOUT ?? "").trim().toLowerCase() === "true";
+}
+
+/* ----------------------------------
    2. RAZORPAYX API CALL
 ---------------------------------- */
 
@@ -347,7 +357,10 @@ async function handlePaymentCaptured(event: any) {
     throw new Error("Venue owner not found");
   }
 
-  validateOwnerPaymentDetails(venueOwner);
+  // Owner bank/UPI details are only required when payouts are enabled
+  if (isPayoutEnabled()) {
+    validateOwnerPaymentDetails(venueOwner);
+  }
 
   const venue = Array.isArray(booking.venues) ? booking.venues[0] : booking.venues;
   const venueAddress = venue
@@ -552,7 +565,24 @@ async function handlePaymentCaptured(event: any) {
     console.error("Invoice creation failed:", error.message);
   }
 
-  // Create payout only once
+  // Create payout only when IS_PAYOUT=true; otherwise funds stay with Razorpay holder
+  if (!isPayoutEnabled()) {
+    console.log(
+      `IS_PAYOUT is disabled — skipping owner payout for booking ${bookingId}. Amount retained with Razorpay account holder.`
+    );
+    try {
+      await supabase
+        .from("bookings")
+        .update({
+          payout_status: "held",
+        })
+        .eq("id", bookingId);
+    } catch (error: any) {
+      console.error("Failed to mark payout as held:", error.message);
+    }
+    return;
+  }
+
   try {
     const payout = await createOwnerPayout({
       bookingId,

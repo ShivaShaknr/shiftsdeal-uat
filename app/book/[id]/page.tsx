@@ -19,6 +19,7 @@ import {
 import { Button, Card, Input, Badge, toast } from '@/components/ui';
 import { formatCurrency, cn } from '@/lib/utils';
 import { bookingContractPdf } from '@/lib/communication/contractTemplates/bookingContractPdf';
+import { sendWhatsAppTemplate } from '@/lib/communication/whatsapp/whatsapp';
 
 type BookingStep = 'details' | 'contract' | 'confirm';
 
@@ -410,7 +411,7 @@ export default function BookingPage() {
     if (!venue || !contract) return;
     
     setIsLoading(true);
-    
+    console.log("formData", formData);
     try {
       const bookingData = {
         venue_id: venue._id,
@@ -486,6 +487,45 @@ export default function BookingPage() {
           createdAt: new Date().toISOString(),
         };
         localStorage.setItem('lastBookingReceipt', JSON.stringify(receiptData));
+        console.log('Booking created successfully:', result.data);
+        try {
+          await sendWhatsAppTemplate({
+            to: `917604863285`,
+            templateName: "booking_request_received",
+            languageCode: "en",
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  {
+                    type: "text",
+                    text: formData.contactName || "Customer",
+                  },
+                  {
+                    type: "text",
+                    text: venue?.name || "Venue",
+                  },
+                  {
+                    type: "text",
+                    text: String(result.data?.id),
+                  },
+                  {
+                    type: "text",
+                    text: formData.date || "N/A",
+                  },
+                ],
+              },
+            ],
+          });
+  
+          console.log("Booking WhatsApp notification sent");
+        } catch (whatsappError) {
+          // Booking should still succeed even if WhatsApp fails
+          console.error(
+            "Failed to send booking WhatsApp notification:",
+            whatsappError
+          );
+        }  
         router.push('/booking-success');
       } else {
         toast.error(result.error || 'Failed to create booking. Please try again.');
