@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { dummyBookings } from '@/lib/data/dummy';
 import { bookingRecievedEmail } from '@/lib/communication/emailTemplates/bookingRecievedEmail';
 import { sendMail } from '@/lib/communication/sendMail';
+import { sendWhatsAppTemplate } from '@/lib/communication/whatsapp/whatsapp';
 
 // Use service role key for server-side operations to bypass RLS
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
@@ -175,6 +176,28 @@ export async function POST(request: NextRequest) {
       }),
     });
 
+    if (data.contact_phone) {
+      try {
+        await sendWhatsAppTemplate({
+          to: `91${data.contact_phone}`,
+          templateName: 'booking_request_received',
+          languageCode: 'en',
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: data.contact_name || 'Customer' },
+                { type: 'text', text: venue?.name || 'Venue' },
+                { type: 'text', text: String(data.id) },
+                { type: 'text', text: data.date || 'N/A' },
+              ],
+            },
+          ],
+        });
+      } catch (whatsappError) {
+        console.error('Failed to send booking WhatsApp notification:', whatsappError);
+      }
+    }
 
     return NextResponse.json({
       success: true,
