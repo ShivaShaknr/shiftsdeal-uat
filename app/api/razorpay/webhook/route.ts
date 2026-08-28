@@ -5,7 +5,10 @@ export const runtime = "nodejs";
 
 import { createClient } from "@supabase/supabase-js";
 import { sendMail } from "@/lib/communication/sendMail";
-import { sendWhatsAppTemplate, uploadWhatsAppMedia } from "@/lib/communication/whatsapp/whatsapp";
+import {
+  sendWhatsAppTemplate,
+  uploadWhatsAppMedia,
+} from "@/lib/communication/whatsapp/whatsapp";
 import { paymentSuccessEmail } from "@/lib/communication/emailTemplates/paymentSuccessEmail";
 import {
   paymentInvoicePdf,
@@ -16,7 +19,7 @@ import { venueCommisionSuccessEmail } from "@/lib/communication/emailTemplates/v
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 const OWNER_PAYMENT_SELECT =
@@ -59,14 +62,22 @@ function validateOwnerPaymentDetails(owner: VenueOwner) {
   const method = getEffectivePaymentMethod(owner);
 
   if (method === "bank") {
-    if (!owner.bank_account_number || !owner.bank_ifsc || !owner.bank_account_name) {
-      throw new Error("Owner bank details missing. Owner must complete payment settings.");
+    if (
+      !owner.bank_account_number ||
+      !owner.bank_ifsc ||
+      !owner.bank_account_name
+    ) {
+      throw new Error(
+        "Owner bank details missing. Owner must complete payment settings.",
+      );
     }
     return;
   }
 
   if (!owner.upi_id) {
-    throw new Error("Owner UPI ID missing. Owner must complete payment settings.");
+    throw new Error(
+      "Owner UPI ID missing. Owner must complete payment settings.",
+    );
   }
 }
 
@@ -151,7 +162,11 @@ function verifyWebhookSignature(rawBody: string, signature: string | null) {
 ---------------------------------- */
 
 function isPayoutEnabled(): boolean {
-  return String(process.env.IS_PAYOUT ?? "").trim().toLowerCase() === "true";
+  return (
+    String(process.env.IS_PAYOUT ?? "")
+      .trim()
+      .toLowerCase() === "true"
+  );
 }
 
 /* ----------------------------------
@@ -161,11 +176,10 @@ function isPayoutEnabled(): boolean {
 async function callRazorpayX(
   endpoint: string,
   body: any,
-  idempotencyKey?: string
+  idempotencyKey?: string,
 ) {
-
   const auth = Buffer.from(
-    `${process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
+    `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`,
   ).toString("base64");
 
   const headers: Record<string, string> = {
@@ -200,7 +214,7 @@ async function callRazorpayX(
 async function createContact(
   bookingId: string,
   shortBookingRef: string,
-  ownerName: string
+  ownerName: string,
 ) {
   const contact = await callRazorpayX("contacts", {
     name: ownerName,
@@ -277,7 +291,7 @@ async function createPayout(params: {
         payout_detail: params.payoutDetail,
       },
     },
-    idempotencyKey
+    idempotencyKey,
   );
 
   return payout;
@@ -295,7 +309,11 @@ async function createOwnerPayout(params: {
   const bookingId = params.bookingId;
   const shortBookingRef = `bk_${bookingId.replaceAll("-", "").slice(0, 30)}`;
 
-  const contact = await createContact(bookingId, shortBookingRef, params.owner.name);
+  const contact = await createContact(
+    bookingId,
+    shortBookingRef,
+    params.owner.name,
+  );
   const fundAccount = await createFundAccount(contact.id, params.owner);
 
   const paymentMethod = getEffectivePaymentMethod(params.owner);
@@ -342,7 +360,7 @@ async function handlePaymentCaptured(event: any) {
       contact_name, contact_email, contact_phone,
       payment_status, venue_id,
       base_price, platform_fee, subtotal, gst_amount, total_amount, deposit_amount, balance_amount,
-      venues(name, address_street, address_city, address_state)`
+      venues(name, address_street, address_city, address_state)`,
     )
     .eq("id", bookingId)
     .single();
@@ -362,14 +380,19 @@ async function handlePaymentCaptured(event: any) {
     validateOwnerPaymentDetails(venueOwner);
   }
 
-  const venue = Array.isArray(booking.venues) ? booking.venues[0] : booking.venues;
+  const venue = Array.isArray(booking.venues)
+    ? booking.venues[0]
+    : booking.venues;
   const venueAddress = venue
-    ? [venue.address_street, venue.address_city, venue.address_state].filter(Boolean).join(", ")
+    ? [venue.address_street, venue.address_city, venue.address_state]
+        .filter(Boolean)
+        .join(", ")
     : "";
 
-
   const totalAmountInPaise = payment.amount;
-  const ownerAmountInPaise = Math.round(Number(booking.base_price-booking.platform_fee) * 100);
+  const ownerAmountInPaise = Math.round(
+    Number(booking.base_price - booking.platform_fee) * 100,
+  );
   console.log("ownerAmountInPaise ==============", ownerAmountInPaise);
 
   /**
@@ -425,29 +448,28 @@ async function handlePaymentCaptured(event: any) {
       const invoiceFileName = `Invoice-${bookingId.substring(0, 8)}.pdf`;
       // Email
       if (booking.contact_email) {
-        if(event.event === "payment.captured") {
-        await sendMail({
-          to: booking.contact_email,
-          subject: "Payment Successful - Booking Confirmed",
-          cc: "veractdata@gmail.com",
-          html: paymentSuccessEmail({
-            contactName: booking.contact_name,
-            eventName: booking.event_name,
-            amount: payment.amount,
-            razorpayPaymentId: payment.id,
-            razorpayOrderId: payment.order_id,
-            address: venueAddress,
-            venueName: venue?.name,
-          }),
-          attachments: [
-            {
-              filename: invoiceFileName,
-              content: invoicePdfBuffer,
-            },
-          ],
-        });
-        }
-        else if(event.event === "payment.failed") {
+        if (event.event === "payment.captured") {
+          await sendMail({
+            to: booking.contact_email,
+            subject: "Payment Successful - Booking Confirmed",
+            cc: "veractdata@gmail.com",
+            html: paymentSuccessEmail({
+              contactName: booking.contact_name,
+              eventName: booking.event_name,
+              amount: payment.amount,
+              razorpayPaymentId: payment.id,
+              razorpayOrderId: payment.order_id,
+              address: venueAddress,
+              venueName: venue?.name,
+            }),
+            attachments: [
+              {
+                filename: invoiceFileName,
+                content: invoicePdfBuffer,
+              },
+            ],
+          });
+        } else if (event.event === "payment.failed") {
           await sendMail({
             to: booking.contact_email,
             subject: "Payment Failed - Booking Confirmed",
@@ -464,55 +486,60 @@ async function handlePaymentCaptured(event: any) {
 
       // WhatsApp
       if (booking.contact_phone) {
-        if(event.event === "payment.captured") {
-        const invoiceMediaId = await uploadWhatsAppMedia({
-          buffer: invoicePdfBuffer,
-          filename: invoiceFileName,
-          mimeType: "application/pdf",
-        });
+        if (event.event === "payment.captured") {
+          const invoiceMediaId = await uploadWhatsAppMedia({
+            buffer: invoicePdfBuffer,
+            filename: invoiceFileName,
+            mimeType: "application/pdf",
+          });
 
-        await sendWhatsAppTemplate({
-          to: booking.contact_phone,
-          templateName: "payment_success",
-          languageCode: "en",
-          components: [
-            {
-              type: "header",
-              parameters: [
-                {
-                  type: "document",
-                  document: {
-                    id: invoiceMediaId,
-                    filename: invoiceFileName,
+          await sendWhatsAppTemplate({
+            to: booking.contact_phone,
+            templateName: "payment_success",
+            languageCode: "en",
+            components: [
+              {
+                type: "header",
+                parameters: [
+                  {
+                    type: "document",
+                    document: {
+                      id: invoiceMediaId,
+                      filename: invoiceFileName,
+                    },
                   },
-                },
-              ],
-            },
-            {
-              type: "body",
-              parameters: [
-                { type: "text", text: booking.contact_name || "Customer" },
-                { type: "text", text: String(booking.total_amount || payment.amount / 100) },
-                { type: "text", text: bookingId },
-                { type: "text", text: payment.id },
-                { type: "text", text: venueAddress || "Address not available" },
-              ],
-            },
-            {
-              type: "button",
-              sub_type: "url",
-              index: "0",
-              parameters: [
-                {
-                  type: "text",
-                  text: `maps/search/?api=1&query=${encodeURIComponent(venueAddress || "")}`,
-                },
-              ],
-            },
-          ],
-        });
-        }
-        else if(event.event === "payment.failed") {
+                ],
+              },
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", text: booking.contact_name || "Customer" },
+                  {
+                    type: "text",
+                    text: String(booking.total_amount || payment.amount / 100),
+                  },
+                  { type: "text", text: bookingId },
+                  { type: "text", text: payment.id },
+                  {
+                    type: "text",
+                    text: venueAddress || "Address not available",
+                  },
+                ],
+              },
+              {
+                type: "button",
+                sub_type: "url",
+                index: "0",
+                parameters: [
+                  {
+                    type: "text",
+                    text: `maps/search/?api=1&query=${encodeURIComponent(venueAddress || "")}`,
+                  },
+                ],
+              },
+            ],
+          });
+        } else if (event.event === "payment.failed") {
           await sendWhatsAppTemplate({
             to: booking.contact_phone,
             templateName: "payment_failure",
@@ -522,20 +549,22 @@ async function handlePaymentCaptured(event: any) {
                 type: "body",
                 parameters: [
                   { type: "text", text: booking.contact_name || "Customer" },
-                  { type: "text", text: String(booking.total_amount || payment.amount / 100) },
+                  {
+                    type: "text",
+                    text: String(booking.total_amount || payment.amount / 100),
+                  },
                   { type: "text", text: bookingId },
                   { type: "text", text: payment.id },
                 ],
               },
             ],
-          }); 
+          });
         }
       }
       // Remove session storage items after email/whatsapp is sent
       sessionStorage.removeItem("isOwnerReferred");
       sessionStorage.removeItem("venueId");
       sessionStorage.removeItem("ownerId");
-
     }
   } catch (error: any) {
     console.error("Payment success email failed:", error.message);
@@ -560,7 +589,6 @@ async function handlePaymentCaptured(event: any) {
         razorpay_invoice_url: invoice.short_url || null,
       })
       .eq("id", bookingId);
-
   } catch (error: any) {
     console.error("Invoice creation failed:", error.message);
   }
@@ -568,7 +596,7 @@ async function handlePaymentCaptured(event: any) {
   // Create payout only when IS_PAYOUT=true; otherwise funds stay with Razorpay holder
   if (!isPayoutEnabled()) {
     console.log(
-      `IS_PAYOUT is disabled — skipping owner payout for booking ${bookingId}. Amount retained with Razorpay account holder.`
+      `IS_PAYOUT is disabled — skipping owner payout for booking ${bookingId}. Amount retained with Razorpay account holder.`,
     );
     try {
       await supabase
@@ -597,7 +625,6 @@ async function handlePaymentCaptured(event: any) {
         payout_status: payout.payout.status,
       })
       .eq("id", bookingId);
-
   } catch (error: any) {
     console.error("Payout creation failed:", error.message);
   }
@@ -621,7 +648,9 @@ async function handlePayoutStatusUpdate(event: any) {
 
   const { data: booking } = await supabase
     .from("bookings")
-    .select("contact_name, contact_email, event_name, contact_phone , total_amount")
+    .select(
+      "contact_name, contact_email, event_name, contact_phone , total_amount",
+    )
     .eq("id", bookingId)
     .single();
 
@@ -647,11 +676,11 @@ async function handlePayoutStatusUpdate(event: any) {
         {
           type: "body",
           parameters: [
-            { type: "text", text: booking.contact_name || "Customer" }, 
-            { type: "text", text: String(booking.total_amount / 100 || 0) },   
-            { type: "text", text: booking.event_name || "Event" },              
-            { type: "text", text: bookingId },                           
-            { type: "text", text: "Payment Declined" },                  
+            { type: "text", text: booking.contact_name || "Customer" },
+            { type: "text", text: String(booking.total_amount / 100 || 0) },
+            { type: "text", text: booking.event_name || "Event" },
+            { type: "text", text: bookingId },
+            { type: "text", text: "Payment Declined" },
           ],
         },
       ],
@@ -685,32 +714,39 @@ export async function POST(req: Request) {
 
       const { data: bookingData }: any = await supabase
         .from("bookings")
-        .select("id, event_name, date, venue_id, start_time, end_time, status, payment_status, total_amount, contact_name, contact_email")
+        .select(
+          "id, event_name, date, venue_id, start_time, end_time, status, payment_status, total_amount, contact_name, contact_email",
+        )
         .eq("id", bookingId)
         .single();
 
       console.log("payment booking details ==============", bookingData);
       // 2. Expire/cancel all duplicate bookings for same venue/date/time except approved booking
       const { data: duplicateBookings, error: duplicateError } = await supabase
-      .from("bookings")
-      .update({
-        status: "expired",
-        payment_status: "expired",
-        updated_at: new Date().toISOString(),
-        payment_inprogress: false,
-      })
-      .eq("venue_id", bookingData?.venue_id)
-      .eq("date", bookingData?.date)
-      .lt("start_time", bookingData?.end_time)
-      .gt("end_time", bookingData?.start_time)
-      .neq("id", bookingId)
-      .in("status", ["pending", "confirmed"])
-      .select("id, event_name, date, venue_id, start_time, end_time, status, payment_status");
+        .from("bookings")
+        .update({
+          status: "expired",
+          payment_status: "expired",
+          updated_at: new Date().toISOString(),
+          payment_inprogress: false,
+        })
+        .eq("venue_id", bookingData?.venue_id)
+        .eq("date", bookingData?.date)
+        .lt("start_time", bookingData?.end_time)
+        .gt("end_time", bookingData?.start_time)
+        .neq("id", bookingId)
+        .in("status", ["pending", "confirmed"])
+        .select(
+          "id, event_name, date, venue_id, start_time, end_time, status, payment_status",
+        );
 
       if (duplicateError) {
-      console.error("Duplicate booking update error:", duplicateError);
+        console.error("Duplicate booking update error:", duplicateError);
       } else {
-      console.log("Cancelled duplicate bookings >>>>>>>>>>>>>>>>>>", duplicateBookings);
+        console.log(
+          "Cancelled duplicate bookings >>>>>>>>>>>>>>>>>>",
+          duplicateBookings,
+        );
       }
     }
 
@@ -736,7 +772,7 @@ export async function POST(req: Request) {
         success: false,
         error: error.message || "Webhook failed",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
@@ -754,7 +790,7 @@ async function createRazorpayInvoice(params: {
   amountInPaise: number;
 }) {
   const auth = Buffer.from(
-    `${process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
+    `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`,
   ).toString("base64");
 
   const response = await fetch("https://api.razorpay.com/v1/invoices", {
@@ -812,7 +848,8 @@ async function handlePayoutWebhook(event: any) {
 
   const { data: booking, error } = await supabase
     .from("bookings")
-    .select(`
+    .select(
+      `
       id,
       event_name,
       base_price,
@@ -822,7 +859,8 @@ async function handlePayoutWebhook(event: any) {
       venue_id,
       razorpay_payout_id,
       platform_fee
-    `)
+    `,
+    )
     .eq("razorpay_payout_id", payoutId)
     .single();
 
@@ -840,7 +878,6 @@ async function handlePayoutWebhook(event: any) {
     })
     .eq("id", booking.id);
 
-
   if (booking.owner_commission_email_sent) return;
 
   const venueOwner = await getVenueOwner(booking.venue_id);
@@ -848,7 +885,7 @@ async function handlePayoutWebhook(event: any) {
 
   const ownerEmail = venueOwner.payment_contact_email || venueOwner.email;
   if (!ownerEmail) return;
-  if(event.event === "payout.processed") {
+  if (event.event === "payout.processed") {
     await sendMail({
       to: ownerEmail,
       subject: `Commission ${event.event} - Shifts Deal`,
@@ -856,7 +893,9 @@ async function handlePayoutWebhook(event: any) {
       html: venueCommisionSuccessEmail({
         ownerName: venueOwner.name,
         eventName: booking.event_name,
-        amount: Math.round(Number(booking.base_price-booking.platform_fee) * 100),
+        amount: Math.round(
+          Number(booking.base_price - booking.platform_fee) * 100,
+        ),
         razorpayPaymentId: booking.razorpay_payout_id,
         razorpayOrderId: booking.razorpay_order_id,
       }),
@@ -867,8 +906,8 @@ async function handlePayoutWebhook(event: any) {
         owner_commission_email_sent: true,
       })
       .eq("id", booking.id);
-    }
-  if(event.event === "payout.reversed") {
+  }
+  if (event.event === "payout.reversed") {
     await sendMail({
       to: ownerEmail,
       subject: `Commission Reversed - Shifts Deal`,
@@ -876,7 +915,9 @@ async function handlePayoutWebhook(event: any) {
       html: venueCommisionSuccessEmail({
         ownerName: venueOwner.name,
         eventName: booking.event_name,
-        amount: Math.round(Number(booking.base_price-booking.platform_fee) * 100),
+        amount: Math.round(
+          Number(booking.base_price - booking.platform_fee) * 100,
+        ),
         razorpayPaymentId: booking.razorpay_payout_id,
         razorpayOrderId: booking.razorpay_order_id,
       }),

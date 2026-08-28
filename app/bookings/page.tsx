@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth/AuthContext";
 import Script from "next/script";
 import {
   Calendar,
@@ -25,12 +25,12 @@ import {
   CheckCircle2,
   IndianRupee,
   Copy,
-} from 'lucide-react';
-import { Button, Card, Badge, toast, Confirm } from '@/components/ui';
-import { formatCurrency, cn } from '@/lib/utils';
-import { supabase } from '@/lib/db/supabase';
+} from "lucide-react";
+import { Button, Card, Badge, toast, Confirm } from "@/components/ui";
+import { formatCurrency, cn } from "@/lib/utils";
+import { supabase } from "@/lib/db/supabase";
 
-const tabs = ['all', 'pending', 'upcoming', 'completed', 'cancelled'];
+const tabs = ["all", "pending", "upcoming", "completed", "cancelled"];
 declare global {
   interface Window {
     Razorpay: any;
@@ -40,32 +40,36 @@ declare global {
 export default function MyBookingsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState("all");
   const [bookings, setBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null);
-  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<
+    string | null
+  >(null);
 
   const fetchData = async (showRefreshing = false) => {
     if (!user?.id) return; // Don't fetch if no user
-    
+
     if (showRefreshing) setIsRefreshing(true);
     else setIsLoading(true);
-    
-    console.log('🔍 Fetching bookings for user:', user.id);
+
+    console.log("🔍 Fetching bookings for user:", user.id);
     try {
       const bookingsRes = await fetch(`/api/bookings?userId=${user.id}`);
       const bookingsResult = await bookingsRes.json();
-      
+
       if (bookingsResult.success && bookingsResult.data) {
-        console.log(`✅ Loaded ${bookingsResult.data.length} bookings for user`);
+        console.log(
+          `✅ Loaded ${bookingsResult.data.length} bookings for user`,
+        );
         setBookings(bookingsResult.data);
       }
-      console.log('🔍 Bookings:', bookingsResult.data);
+      console.log("🔍 Bookings:", bookingsResult.data);
     } catch (error) {
-      console.error('❌ Error fetching data:', error);
+      console.error("❌ Error fetching data:", error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -75,26 +79,26 @@ export default function MyBookingsPage() {
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!authLoading && !user) {
-      router.push('/login?redirect=/bookings');
+      router.push("/login?redirect=/bookings");
       return;
     }
-    
+
     if (user?.id) {
       fetchData();
     }
   }, [user, authLoading, router]);
-  
+
   useEffect(() => {
     if (!user?.id) return;
 
     const channel = supabase
       .channel(`bookings-${user.id}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'bookings',
+          event: "UPDATE",
+          schema: "public",
+          table: "bookings",
           filter: `renter_id=eq.${user.id}`,
         },
         (payload) => {
@@ -103,10 +107,10 @@ export default function MyBookingsPage() {
             prev.map((b) =>
               String(b.id || b._id) === String(updated.id)
                 ? { ...b, ...updated }
-                : b
-            )
+                : b,
+            ),
           );
-        }
+        },
       )
       .subscribe();
 
@@ -146,28 +150,28 @@ export default function MyBookingsPage() {
   }));
 
   const filteredBookings =
-    activeTab === 'all'
+    activeTab === "all"
       ? bookingsWithVenues
       : bookingsWithVenues.filter((b) => {
-          if (activeTab === 'pending') return b.status === 'pending';
-          if (activeTab === 'upcoming') return b.status === 'confirmed';
-          if (activeTab === 'completed') return b.status === 'completed';
-          if (activeTab === 'cancelled') return b.status === 'cancelled';
+          if (activeTab === "pending") return b.status === "pending";
+          if (activeTab === "upcoming") return b.status === "confirmed";
+          if (activeTab === "completed") return b.status === "completed";
+          if (activeTab === "cancelled") return b.status === "cancelled";
           return true;
         });
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'confirmed':
-        return 'success';
-      case 'pending':
-        return 'warning';
-      case 'completed':
-        return 'primary';
-      case 'cancelled':
-        return 'error';
+      case "confirmed":
+        return "success";
+      case "pending":
+        return "warning";
+      case "completed":
+        return "primary";
+      case "cancelled":
+        return "error";
       default:
-        return 'default';
+        return "default";
     }
   };
 
@@ -177,22 +181,24 @@ export default function MyBookingsPage() {
     setDeletingId(deleteBookingId);
     try {
       const response = await fetch(`/api/bookings/${deleteBookingId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
-        setBookings(bookings.filter(b => (b.id || b._id) !== deleteBookingId));
+        setBookings(
+          bookings.filter((b) => (b.id || b._id) !== deleteBookingId),
+        );
         setDeleteBookingId(null);
-        toast.success('Booking deleted successfully');
+        toast.success("Booking deleted successfully");
       } else {
-        console.error('❌ Failed to delete booking:', result.error);
-        toast.error('Failed to delete booking: ' + result.error);
+        console.error("❌ Failed to delete booking:", result.error);
+        toast.error("Failed to delete booking: " + result.error);
       }
     } catch (error) {
-      console.error('❌ Error deleting booking:', error);
-      toast.error('Error deleting booking');
+      console.error("❌ Error deleting booking:", error);
+      toast.error("Error deleting booking");
     } finally {
       setDeletingId(null);
     }
@@ -205,23 +211,23 @@ export default function MyBookingsPage() {
 
       if (!response.ok) {
         const result = await response.json().catch(() => null);
-        toast.error(result?.error || 'Failed to download invoice');
+        toast.error(result?.error || "Failed to download invoice");
         return;
       }
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `Invoice-${bookingId.substring(0, 8).toUpperCase()}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success('Invoice downloaded');
+      toast.success("Invoice downloaded");
     } catch (error) {
-      console.error('Invoice download error:', error);
-      toast.error('Failed to download invoice');
+      console.error("Invoice download error:", error);
+      toast.error("Failed to download invoice");
     } finally {
       setDownloadingInvoiceId(null);
     }
@@ -244,39 +250,39 @@ export default function MyBookingsPage() {
       </div>
     );
   }
-  
+
   const handlePayNow = async (bookingId: string) => {
     // Block others immediately (other users get this via realtime listener above)
-    fetch('/api/payment-block', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    fetch("/api/payment-block", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bookingId }),
     });
 
     const scriptLoaded = await loadRazorpayScript();
     if (!scriptLoaded) {
-      toast.error('Razorpay SDK failed to load');
+      toast.error("Razorpay SDK failed to load");
       return;
     }
 
     const response = await fetch(`/api/bookings/${bookingId}/pay`, {
-      method: 'POST',
+      method: "POST",
     });
 
     const result = await response.json();
 
     if (!result.success) {
-      fetch('/api/payment-block', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+      fetch("/api/payment-block", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookingId }),
       });
-      toast.error(result.error || 'Failed to create payment order');
+      toast.error(result.error || "Failed to create payment order");
       return;
     }
-  
+
     const options = {
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      key: process.env.RAZORPAY_KEY_ID,
       amount: result.data.amount,
       currency: result.data.currency,
       name: "Shifts Deal",
@@ -288,7 +294,7 @@ export default function MyBookingsPage() {
         netbanking: true,
         wallet: true,
       },
-  
+
       handler: async function (paymentResponse: any) {
         const verifyResponse = await fetch(
           `/api/bookings/${bookingId}/verify-payment`,
@@ -298,11 +304,11 @@ export default function MyBookingsPage() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify(paymentResponse),
-          }
+          },
         );
-  
+
         const verifyResult = await verifyResponse.json();
-  
+
         if (verifyResult.success) {
           toast.success("Payment successful");
 
@@ -316,8 +322,8 @@ export default function MyBookingsPage() {
                     payment_status: "fully_paid",
                     payment_inprogress: false,
                   }
-                : b
-            )
+                : b,
+            ),
           );
 
           // Sync from server after webhook has time to update status
@@ -328,19 +334,19 @@ export default function MyBookingsPage() {
       },
       modal: {
         ondismiss: async function () {
-          await fetch('/api/payment-block', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
+          await fetch("/api/payment-block", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ bookingId }),
           });
         },
       },
-  
+
       theme: {
         color: "#28282B",
       },
     };
-  
+
     const razorpay = new window.Razorpay(options);
     razorpay.open();
   };
@@ -371,7 +377,7 @@ export default function MyBookingsPage() {
         return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
-  
+
   const getStatusLabel = (status: any) => {
     switch (status) {
       case "completed":
@@ -390,25 +396,26 @@ export default function MyBookingsPage() {
   };
 
   const approvalMinutes = Number(
-    process.env.NEXT_PUBLIC_EXPIRE_VENUE_APPROVAL_TIMING || 1440
+    process.env.EXPIRE_VENUE_APPROVAL_TIMING || 1440,
   );
 
   const paymentExpiryMinutes = Number(
-    process.env.NEXT_PUBLIC_PAYMENT_EXPIRY_TIME || 1440
+    process.env.NEXT_PUBLIC_PAYMENT_EXPIRY_TIME || 1440,
   );
   const formatExpiryDuration = (minutes: number) => {
     if (minutes < 60) {
-      return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+      return `${minutes} minute${minutes === 1 ? "" : "s"}`;
     }
 
     const hours = minutes / 60;
-    const displayHours = Number.isInteger(hours) ? hours : parseFloat(hours.toFixed(1));
-    return `${displayHours} hour${displayHours === 1 ? '' : 's'}`;
+    const displayHours = Number.isInteger(hours)
+      ? hours
+      : parseFloat(hours.toFixed(1));
+    return `${displayHours} hour${displayHours === 1 ? "" : "s"}`;
   };
 
   const approvalExpiryLabel = formatExpiryDuration(approvalMinutes);
   const paymentExpiryLabel = formatExpiryDuration(paymentExpiryMinutes);
-
 
   return (
     <div className="min-h-screen bg-background py-8">
@@ -418,14 +425,20 @@ export default function MyBookingsPage() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">My Bookings</h1>
-            <p className="text-foreground-muted">View and manage your venue bookings</p>
+            <p className="text-foreground-muted">
+              View and manage your venue bookings
+            </p>
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={() => fetchData(true)}
             disabled={isRefreshing}
-            leftIcon={<RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />}
+            leftIcon={
+              <RefreshCw
+                className={cn("w-4 h-4", isRefreshing && "animate-spin")}
+              />
+            }
           >
             Refresh
           </Button>
@@ -438,10 +451,10 @@ export default function MyBookingsPage() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
-                'px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all whitespace-nowrap',
+                "px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all whitespace-nowrap",
                 activeTab === tab
-                  ? 'bg-primary text-background'
-                  : 'bg-background-card text-foreground-muted hover:text-foreground'
+                  ? "bg-primary text-background"
+                  : "bg-background-card text-foreground-muted hover:text-foreground",
               )}
             >
               {tab}
@@ -453,7 +466,9 @@ export default function MyBookingsPage() {
         {filteredBookings.length === 0 ? (
           <Card className="p-12 text-center">
             <Calendar className="w-12 h-12 text-foreground-muted mx-auto mb-4" />
-            <h3 className="font-semibold text-foreground mb-2">No bookings found</h3>
+            <h3 className="font-semibold text-foreground mb-2">
+              No bookings found
+            </h3>
             <p className="text-foreground-muted mb-6">
               You haven't made any bookings yet. Start exploring venues!
             </p>
@@ -488,34 +503,37 @@ export default function MyBookingsPage() {
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h3 className="font-semibold text-foreground text-[18px]">
-                            {booking.venueDetails?.name || 'Venue'}
+                            {booking.venueDetails?.name || "Venue"}
                           </h3>
                           <p className="text-sm text-foreground-muted flex items-center gap-1 capitalize text-[12px]">
                             <MapPin className="w-3 h-3" />
-                            {booking.venueDetails?.address?.city || '—'}
+                            {booking.venueDetails?.address?.city || "—"}
                           </p>
                         </div>
                         <span
-                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${getStatusTagClass(
-                              booking.status
-                            )}`}
-                          >
-                            {getStatusLabel(booking.status)}
+                          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${getStatusTagClass(
+                            booking.status,
+                          )}`}
+                        >
+                          {getStatusLabel(booking.status)}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-4">
-                        <div className='flex flex-col gap-2'>
+                        <div className="flex flex-col gap-2">
                           <p className="text-foreground-muted flex items-center gap-2 text-[14px] capitalize">
                             <Calendar className="w-3 h-3" />
                             Date
                           </p>
                           <p className="text-foreground font-medium text-[14px]">
-                            {new Date(booking.date).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
+                            {new Date(booking.date).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )}
                           </p>
                         </div>
                         <div>
@@ -532,7 +550,9 @@ export default function MyBookingsPage() {
                             <Users className="w-3 h-3" />
                             Attendees
                           </p>
-                          <p className="text-foreground font-medium">{booking.attendees}</p>
+                          <p className="text-foreground font-medium">
+                            {booking.attendees}
+                          </p>
                         </div>
                         <div>
                           <p className="text-foreground-muted">Amount</p>
@@ -542,166 +562,254 @@ export default function MyBookingsPage() {
                         </div>
                       </div>
 
-                      {booking.status === 'pending' && (
+                      {booking.status === "pending" && (
                         <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-4">
-                         <div className="flex items-center gap-2 text-warning">
-                           <Clock className="w-4 h-4" />
-                           <p className="text-sm">Awaiting venue owner approval. You’ll be notified once it’s confirmed, usually within {approvalExpiryLabel}.</p>
-                         </div>
+                          <div className="flex items-center gap-2 text-warning">
+                            <Clock className="w-4 h-4" />
+                            <p className="text-sm">
+                              Awaiting venue owner approval. You’ll be notified
+                              once it’s confirmed, usually within{" "}
+                              {approvalExpiryLabel}.
+                            </p>
+                          </div>
                         </div>
                       )}
 
-                      {booking.status === 'confirmed' && booking.payment_status === 'fully_paid' && (
-                         <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
-                         <div className="flex items-start gap-3">
-                           <CheckCircle2 className="w-5 h-5 text-success mt-0.5" />
-                           <div className="flex-1">
-                             <h4 className="font-semibold text-success mb-1">Payment Received!</h4>
-                             <p className="text-sm text-foreground-muted mb-3">
-                               Your deposit of {formatCurrency(booking.deposit_amount || booking.depositAmount)} has been confirmed.
-                               {booking.deposit_paid_at && (
-                                 <span className="block text-xs mt-1">
-                                   Paid on: {new Date(booking.deposit_paid_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                 </span>
-                               )}
-                             </p>
-                             
-                             <div className="bg-background/50 rounded-lg p-3 space-y-2">
-                               <div className="flex justify-between text-sm">
-                                 <span className="text-foreground-muted">Total Amount:</span>
-                                 <span className="font-medium text-foreground">{formatCurrency(booking.totalAmount || booking.total_amount)}</span>
-                               </div>
-                               <div className="flex justify-between text-sm">
-                                 <span className="text-foreground-muted">Deposit Paid:</span>
-                                 <span className="font-medium text-success">✓ {formatCurrency(booking.deposit_amount || booking.depositAmount)}</span>
-                               </div>
-                               <div className="flex justify-between text-sm border-t border-border pt-2">
-                                 <span className="text-foreground-muted">Balance Due:</span>
-                                 <span className="font-semibold text-primary">{formatCurrency(booking.balance_amount || booking.balanceAmount)}</span>
-                               </div>
-                               <p className="text-xs text-foreground-muted pt-1">
-                                 Balance payment due 7 days before event date
-                               </p>
-                             </div>
+                      {booking.status === "confirmed" &&
+                        booking.payment_status === "fully_paid" && (
+                          <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
+                            <div className="flex items-start gap-3">
+                              <CheckCircle2 className="w-5 h-5 text-success mt-0.5" />
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-success mb-1">
+                                  Payment Received!
+                                </h4>
+                                <p className="text-sm text-foreground-muted mb-3">
+                                  Your deposit of{" "}
+                                  {formatCurrency(
+                                    booking.deposit_amount ||
+                                      booking.depositAmount,
+                                  )}{" "}
+                                  has been confirmed.
+                                  {booking.deposit_paid_at && (
+                                    <span className="block text-xs mt-1">
+                                      Paid on:{" "}
+                                      {new Date(
+                                        booking.deposit_paid_at,
+                                      ).toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "long",
+                                        year: "numeric",
+                                      })}
+                                    </span>
+                                  )}
+                                </p>
 
-                             {booking.balance_paid && (
-                               <div className="mt-3 p-3 bg-success/20 rounded-lg">
-                                 <p className="text-sm text-success font-medium">✓ Full payment received! Your booking is fully confirmed.</p>
-                               </div>
-                             )}
-                           </div>
-                         </div>
-                       </div>
-                      )}
+                                <div className="bg-background/50 rounded-lg p-3 space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-foreground-muted">
+                                      Total Amount:
+                                    </span>
+                                    <span className="font-medium text-foreground">
+                                      {formatCurrency(
+                                        booking.totalAmount ||
+                                          booking.total_amount,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-foreground-muted">
+                                      Deposit Paid:
+                                    </span>
+                                    <span className="font-medium text-success">
+                                      ✓{" "}
+                                      {formatCurrency(
+                                        booking.deposit_amount ||
+                                          booking.depositAmount,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-sm border-t border-border pt-2">
+                                    <span className="text-foreground-muted">
+                                      Balance Due:
+                                    </span>
+                                    <span className="font-semibold text-primary">
+                                      {formatCurrency(
+                                        booking.balance_amount ||
+                                          booking.balanceAmount,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-foreground-muted pt-1">
+                                    Balance payment due 7 days before event date
+                                  </p>
+                                </div>
 
-                      {booking.status === 'confirmed' && booking.payment_status === 'pending' && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 ">
-                         <div className="flex items-start gap-3">
-                           <CheckCircle2 className="w-5 h-5 mt-0.5 text-blue-700" />
-                           <div className="flex-1">
-                             {process.env.NEXT_PUBLIC_PAYMENT_MODE === 'platform' ? (
-                               /* ── PLATFORM PAYMENT MODE: QR + UPI flow ── */
-                               <>
-                                 <h4 className="font-semibold text-foreground mb-2">Booking Approved! Complete Your Payment</h4>
-                                 <div className="space-y-3 text-sm">
-                                   <div className="bg-background/50 rounded-lg p-3">
-                                     <p className="text-foreground-muted mb-2">Pay deposit to confirm your booking:</p>
-                                     <div className="flex items-center justify-between">
-                                       <span className="font-semibold text-foreground">Deposit Amount (30%):</span>
-                                       <span className="text-lg font-bold text-primary">{formatCurrency(booking.deposit_amount || booking.depositAmount || Math.round((booking.totalAmount || booking.total_amount) * 0.3))}</span>
-                                     </div>
-                                   </div>
-                                   
-                                   <div className="space-y-2">
-                                     <p className="font-medium text-foreground flex items-center gap-2">
-                                       <IndianRupee className="w-4 h-4" />
-                                       Payment Options:
-                                     </p>
-                                     <div className="bg-background/50 rounded-lg p-3 space-y-3">
-                                       <div className="flex flex-col sm:flex-row gap-4">
-                                         {/* QR Code */}
-                                         <div className="flex-shrink-0">
-                                           <p className="text-xs text-foreground-muted mb-2 text-center">Scan to Pay</p>
-                                           <img 
-                                             src="/QR.jpeg" 
-                                             alt="Payment QR Code" 
-                                             className="w-32 h-32 rounded-lg border border-border"
-                                           />
-                                         </div>
-                                         
-                                         {/* UPI Details */}
-                                         <div className="flex-1 space-y-2">
-                                           <div className="flex items-center justify-between">
-                                             <span className="text-foreground-muted">UPI ID:</span>
-                                             <div className="flex items-center gap-2">
-                                               <code className="bg-primary/10 text-primary px-2 py-1 rounded text-sm font-mono">
-                                                 shiftsdeal@upi
-                                               </code>
-                                               <button 
-                                                 onClick={() => {
-                                                   navigator.clipboard.writeText('shiftsdeal@upi');
-                                                   toast.success('UPI ID copied!');
-                                                 }}
-                                                 className="text-primary hover:text-primary/80"
-                                               >
-                                                 <Copy className="w-4 h-4" />
-                                               </button>
-                                             </div>
-                                           </div>
-                                           <p className="text-xs text-foreground-muted">
-                                             Pay via any UPI app (GPay, PhonePe, Paytm, etc.)
-                                           </p>
-                                         </div>
-                                       </div>
-                                     </div>
-                                   </div>
+                                {booking.balance_paid && (
+                                  <div className="mt-3 p-3 bg-success/20 rounded-lg">
+                                    <p className="text-sm text-success font-medium">
+                                      ✓ Full payment received! Your booking is
+                                      fully confirmed.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
-                                   <div className="flex items-start gap-2 text-foreground-muted">
-                                     <Phone className="w-4 h-4 mt-0.5" />
-                                     <div>
-                                       <p>Our team will call you at <strong className="text-foreground">{booking.contact_phone || booking.contactPhone}</strong> to confirm payment details.</p>
-                                     </div>
-                                   </div>
+                      {booking.status === "confirmed" &&
+                        booking.payment_status === "pending" && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 ">
+                            <div className="flex items-start gap-3">
+                              <CheckCircle2 className="w-5 h-5 mt-0.5 text-blue-700" />
+                              <div className="flex-1">
+                                {process.env.NEXT_PUBLIC_PAYMENT_MODE ===
+                                "platform" ? (
+                                  /* ── PLATFORM PAYMENT MODE: QR + UPI flow ── */
+                                  <>
+                                    <h4 className="font-semibold text-foreground mb-2">
+                                      Booking Approved! Complete Your Payment
+                                    </h4>
+                                    <div className="space-y-3 text-sm">
+                                      <div className="bg-background/50 rounded-lg p-3">
+                                        <p className="text-foreground-muted mb-2">
+                                          Pay deposit to confirm your booking:
+                                        </p>
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-semibold text-foreground">
+                                            Deposit Amount (30%):
+                                          </span>
+                                          <span className="text-lg font-bold text-primary">
+                                            {formatCurrency(
+                                              booking.deposit_amount ||
+                                                booking.depositAmount ||
+                                                Math.round(
+                                                  (booking.totalAmount ||
+                                                    booking.total_amount) * 0.3,
+                                                ),
+                                            )}
+                                          </span>
+                                        </div>
+                                      </div>
 
-                                   <div className="flex items-start gap-2 text-warning">
-                                     <AlertCircle className="w-4 h-4 mt-0.5" />
-                                     <p className="text-sm">Pay deposit within 24 hours to secure your booking. Balance due 7 days before event.</p>
-                                   </div>
-                                 </div>
-                               </>
-                             ) : (
-                               /* ── DIRECT MODE: ShiftsDeal contacts the user ── */
-                               <>
-                                 <h4 className="font-semibold text-blue-700 mb-2">Your Request Has Been Approved! 🎉</h4>
-                                 {/* <p className="text-sm text-foreground-muted mb-3">
+                                      <div className="space-y-2">
+                                        <p className="font-medium text-foreground flex items-center gap-2">
+                                          <IndianRupee className="w-4 h-4" />
+                                          Payment Options:
+                                        </p>
+                                        <div className="bg-background/50 rounded-lg p-3 space-y-3">
+                                          <div className="flex flex-col sm:flex-row gap-4">
+                                            {/* QR Code */}
+                                            <div className="flex-shrink-0">
+                                              <p className="text-xs text-foreground-muted mb-2 text-center">
+                                                Scan to Pay
+                                              </p>
+                                              <img
+                                                src="/QR.jpeg"
+                                                alt="Payment QR Code"
+                                                className="w-32 h-32 rounded-lg border border-border"
+                                              />
+                                            </div>
+
+                                            {/* UPI Details */}
+                                            <div className="flex-1 space-y-2">
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-foreground-muted">
+                                                  UPI ID:
+                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                  <code className="bg-primary/10 text-primary px-2 py-1 rounded text-sm font-mono">
+                                                    shiftsdeal@upi
+                                                  </code>
+                                                  <button
+                                                    onClick={() => {
+                                                      navigator.clipboard.writeText(
+                                                        "shiftsdeal@upi",
+                                                      );
+                                                      toast.success(
+                                                        "UPI ID copied!",
+                                                      );
+                                                    }}
+                                                    className="text-primary hover:text-primary/80"
+                                                  >
+                                                    <Copy className="w-4 h-4" />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                              <p className="text-xs text-foreground-muted">
+                                                Pay via any UPI app (GPay,
+                                                PhonePe, Paytm, etc.)
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-start gap-2 text-foreground-muted">
+                                        <Phone className="w-4 h-4 mt-0.5" />
+                                        <div>
+                                          <p>
+                                            Our team will call you at{" "}
+                                            <strong className="text-foreground">
+                                              {booking.contact_phone ||
+                                                booking.contactPhone}
+                                            </strong>{" "}
+                                            to confirm payment details.
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-start gap-2 text-warning">
+                                        <AlertCircle className="w-4 h-4 mt-0.5" />
+                                        <p className="text-sm">
+                                          Pay deposit within 24 hours to secure
+                                          your booking. Balance due 7 days
+                                          before event.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  /* ── DIRECT MODE: ShiftsDeal contacts the user ── */
+                                  <>
+                                    <h4 className="font-semibold text-blue-700 mb-2">
+                                      Your Request Has Been Approved! 🎉
+                                    </h4>
+                                    {/* <p className="text-sm text-foreground-muted mb-3">
                                    ShiftsDeal will reach out to you in the next 24 hours from{' '}
                                    <a href="mailto:team.shiftsdeal@gmail.com" className="text-primary underline">
                                      team.shiftsdeal@gmail.com
                                    </a>{' '}
                                    with further instructions to complete your booking.
                                  </p> */}
-                                 <div className="flex items-start gap-2 text-blue-700 text-sm">
-                                   <p>Please make the payment within {paymentExpiryLabel} to confirm your booking.</p>
-                                 </div>
-                               </>
-                             )}
-                           </div>
-                         </div>
-                        </div>
-                      )}
+                                    <div className="flex items-start gap-2 text-blue-700 text-sm">
+                                      <p>
+                                        Please make the payment within{" "}
+                                        {paymentExpiryLabel} to confirm your
+                                        booking.
+                                      </p>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
-                      {booking.status === 'completed' && (
+                      {booking.status === "completed" && (
                         <div className="bg-green-50 border border-green-700 rounded-lg p-4 mb-4">
                           <div className="flex items-start gap-3">
                             <CheckCircle2 className="w-5 h-5 text-green-700 mt-0.5 flex-shrink-0" />
-                      
+
                             <div className="flex-1">
                               <h4 className="font-semibold text-foreground mb-1 text-green-700">
                                 Booking Completed
                               </h4>
-                      
+
                               <p className="text-sm text-green-700">
-                                Your booking has been successfully completed. Thank you for choosing ShiftsDeal.
+                                Your booking has been successfully completed.
+                                Thank you for choosing ShiftsDeal.
                               </p>
 
                               <h4 className="text-[14px] underline font-semibold text-foreground mt-2 mb-1 text-green-700">
@@ -709,10 +817,11 @@ export default function MyBookingsPage() {
                               </h4>
 
                               <p className="text-sm text-green-700">
-                                {booking.venueDetails?.name},{" "}
-                                <br />
-                                {booking.venueDetails?.address?.street}{"  "}
-                                {booking.venueDetails?.address?.city}{", "}
+                                {booking.venueDetails?.name}, <br />
+                                {booking.venueDetails?.address?.street}
+                                {"  "}
+                                {booking.venueDetails?.address?.city}
+                                {", "}
                                 {booking.venueDetails?.address?.state}
                               </p>
                             </div>
@@ -720,21 +829,22 @@ export default function MyBookingsPage() {
                         </div>
                       )}
 
-                      {booking.status === 'cancelled' && (
+                      {booking.status === "cancelled" && (
                         <div className="bg-red-50 border border-red-700 rounded-lg p-4 mb-4">
-                        <div className="flex items-start gap-3">
-                          <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0 text-red-700" />
-                    
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-red-700 mb-1">
-                              Booking Cancelled
-                            </h4>
-                    
-                            <p className="text-sm text-red-700">
-                              This booking has been cancelled. Please contact our team if you need more details.
-                            </p>
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0 text-red-700" />
+
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-red-700 mb-1">
+                                Booking Cancelled
+                              </h4>
+
+                              <p className="text-sm text-red-700">
+                                This booking has been cancelled. Please contact
+                                our team if you need more details.
+                              </p>
+                            </div>
                           </div>
-                        </div>
                         </div>
                       )}
 
@@ -745,7 +855,8 @@ export default function MyBookingsPage() {
                             <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
                               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                               <p className="text-xs leading-relaxed text-amber-800 sm:text-sm">
-                                Another renter is paying for this slot. Please try again shortly.
+                                Another renter is paying for this slot. Please
+                                try again shortly.
                               </p>
                             </div>
                           )}
@@ -755,7 +866,7 @@ export default function MyBookingsPage() {
                             Booking ID: {booking._id}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                            {booking.status === 'completed' && (
+                            {booking.status === "completed" && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -765,50 +876,76 @@ export default function MyBookingsPage() {
                               </Button>
                             )}
 
-                            {booking.status === "confirmed" && booking.payment_status === "pending" && (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                leftIcon={<CreditCard className="w-4 h-4" />}
-                                onClick={() => {
-                                  if (!booking.payment_inprogress) {
-                                    handlePayNow(booking._id);
+                            {booking.status === "confirmed" &&
+                              booking.payment_status === "pending" && (
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  leftIcon={<CreditCard className="w-4 h-4" />}
+                                  onClick={() => {
+                                    if (!booking.payment_inprogress) {
+                                      handlePayNow(booking._id);
+                                    }
+                                  }}
+                                  disabled={booking.payment_inprogress}
+                                  className={
+                                    booking.payment_inprogress
+                                      ? "cursor-not-allowed opacity-60"
+                                      : "cursor-pointer"
                                   }
-                                }}
-                                disabled={booking.payment_inprogress}
-                                className={
-                                  booking.payment_inprogress
-                                    ? "cursor-not-allowed opacity-60"
-                                    : "cursor-pointer"
-                                }
-                              >
-                                Pay Now
-                              </Button>
-                            )}
-                            {booking.status === "completed" &&
+                                >
+                                  Pay Now
+                                </Button>
+                              )}
+                            {booking.status === "completed" && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 leftIcon={
-                                  downloadingInvoiceId === (booking.id || booking._id)
-                                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                                    : <Download className="w-4 h-4" />
+                                  downloadingInvoiceId ===
+                                  (booking.id || booking._id) ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Download className="w-4 h-4" />
+                                  )
                                 }
-                                disabled={downloadingInvoiceId === (booking.id || booking._id)}
-                                onClick={() => handleDownloadInvoice(booking.id || booking._id)}
+                                disabled={
+                                  downloadingInvoiceId ===
+                                  (booking.id || booking._id)
+                                }
+                                onClick={() =>
+                                  handleDownloadInvoice(
+                                    booking.id || booking._id,
+                                  )
+                                }
                               >
-                                {downloadingInvoiceId === (booking.id || booking._id) ? 'Downloading...' : 'Invoice'}
+                                {downloadingInvoiceId ===
+                                (booking.id || booking._id)
+                                  ? "Downloading..."
+                                  : "Invoice"}
                               </Button>
-                            }
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
                               className="text-error hover:bg-error/10"
-                              onClick={() => setDeleteBookingId(booking.id || booking._id)}
-                              disabled={deletingId === (booking.id || booking._id)}
-                              leftIcon={deletingId === (booking.id || booking._id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              onClick={() =>
+                                setDeleteBookingId(booking.id || booking._id)
+                              }
+                              disabled={
+                                deletingId === (booking.id || booking._id)
+                              }
+                              leftIcon={
+                                deletingId === (booking.id || booking._id) ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )
+                              }
                             >
-                              {deletingId === (booking.id || booking._id) ? 'Deleting...' : 'Delete'}
+                              {deletingId === (booking.id || booking._id)
+                                ? "Deleting..."
+                                : "Delete"}
                             </Button>
                             <Link href={`/venues/${booking.venueId}`}>
                               <Button
